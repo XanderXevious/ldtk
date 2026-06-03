@@ -685,8 +685,9 @@ class Definitions {
 
 	/**  ENUM DEFS  *****************************************/
 
-	public function createEnumDef(?externalRelPath:String) : data.def.EnumDef {
-		var ed = new data.def.EnumDef(_project, _project.generateUniqueId_int(), "Enum", externalRelPath);
+	public function createEnumDef(?externalRelPath:String, ?identifier:String) : data.def.EnumDef {
+		var id = identifier==null ? "Enum" : identifier;
+		var ed = new data.def.EnumDef(_project, _project.generateUniqueId_int(), id, externalRelPath);
 		ed.identifier = _project.fixUniqueIdStr(ed.identifier, (id)->isEnumIdentifierUnique(id));
 
 		if( ed.isExternal() )
@@ -699,8 +700,7 @@ class Definitions {
 	}
 
 	public function createExternalEnumDef(relSourcePath:String, checksum:String, e:EditorTypes.ParsedExternalEnum) {
-		var ed = createEnumDef(relSourcePath);
-		ed.identifier = e.enumId;
+		var ed = createEnumDef(relSourcePath, e.enumId);
 		ed.externalFileChecksum = checksum;
 
 		for(v in e.values) {

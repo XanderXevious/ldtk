@@ -490,9 +490,8 @@ class ExternalEnum {
 						}
 
 				case Added: // New enum
-					var ed = project.defs.createEnumDef(relSourcePath);
-					ed.identifier = eDiff.enumId;
-					for(v in eDiff.valueDiffs) {
+				var ed = project.defs.createEnumDef(relSourcePath, eDiff.enumId);
+				for(v in eDiff.valueDiffs) {
 						var ev = ed.addValue(v.valueId);
 						if( v.data.color!=null )
 							ev.color = v.data.color;
