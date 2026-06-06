@@ -5,7 +5,7 @@ class SelectionTool extends Tool<Int> {
 	var startedOverSelecton = false;
 	var movePreview : h2d.Graphics;
 	var isCopy = false;
-	var group : GenericLevelElementGroup;
+	public var group : GenericLevelElementGroup;
 
 	public function new() {
 		super();

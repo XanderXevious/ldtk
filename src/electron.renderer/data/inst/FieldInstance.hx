@@ -325,6 +325,10 @@ class FieldInstance {
 		}
 	}
 
+	public function insertArrayValue(idx:Int) {
+		if( def.isArray && idx >= 0 && idx <= internalValues.length )
+			internalValues.insert(idx, null);
+	}
 
 	public inline function hasAnyErrorInValues(thisEi:Null<EntityInstance>) {
 		return getFirstErrorInValues(thisEi)!=null;

@@ -4,8 +4,51 @@ class EntityTool extends tool.LayerTool<Int> {
 	public var curEntityDef(get,never) : Null<data.def.EntityDef>;
 	static var PREV_CHAINABLE_EI: Null<data.inst.EntityInstance>;
 
+	public var group : GenericLevelElementGroup;
+
+	// Edge insertion state
+	var edgeInsertSnap : Null<{ fi:data.inst.FieldInstance, ei:data.inst.EntityInstance, li:data.inst.LayerInstance, insertIdx:Int, snapX:Float, snapY:Float }> = null;
+	var edgeInsertGraphics : h2d.Graphics;
+
+	public function getCurrentlyEditedEntity(): Null<data.inst.EntityInstance> {
+		if (editor.curTool != this || !canEdit())
+			return null;
+
+		var sel = editor.selectionTool;
+		if (!sel.isSingle())
+			return null;
+
+		return switch @:privateAccess sel.group.getElement(0) {
+			case Entity(li, ei) if (li == curLayerInstance):
+				ei;
+			case PointField(li, ei, _, _) if (li == curLayerInstance):
+				ei;
+			case _:
+				null;
+		}
+	}
+
+	public function isEntityBeingEdited(ei: data.inst.EntityInstance): Bool {
+		if (ei == null || !canEdit())
+			return false;
+
+		var sel = editor.selectionTool;
+		if (!sel.isSingle())
+			return false;
+
+		return switch (sel.group.getElement(0)) {
+			case Entity(li, selectedEi) if (li == curLayerInstance && selectedEi == ei):
+				true;
+			case _:
+				false;
+		}
+	}
+
 	public function new() {
 		super();
+
+		edgeInsertGraphics = new h2d.Graphics();
+		editor.levelRender.root.add(edgeInsertGraphics, Const.DP_UI);
 
 		if( curEntityDef==null && project.defs.entities.length>0 )
 			selectValue( project.defs.entities[0].uid );
@@ -77,6 +120,108 @@ class EntityTool extends tool.LayerTool<Int> {
 			: m.levelY;
 	}
 
+	function getEdgeInsertSnap(m:Coords, ei: data.inst.EntityInstance) : Null<{ fi:data.inst.FieldInstance, ei:data.inst.EntityInstance, li:data.inst.LayerInstance, insertIdx:Int, snapX:Float, snapY:Float }> {
+
+		final snapDist = 15.0 / editor.camera.adjustedZoom;
+		var bestDist = snapDist;
+		var best = null;
+
+		for( fi in ei.fieldInstances ) {
+			if( fi.def.type != F_Point )
+				continue;
+
+			var isPath = switch fi.def.editorDisplayMode {
+				case PointPath, PointPathLoop: true;
+				case _: false;
+			}
+			if( !isPath )
+				continue;
+
+			var n = fi.getArrayLength();
+			if( n < 1 )
+				continue;
+
+			var isLoop = fi.def.editorDisplayMode == PointPathLoop;
+
+			// Build the full list of level-space vertices, starting from entity origin
+			var verts : Array<{ x:Float, y:Float }> = [];
+
+			var li = ei._li;
+
+			// First vertex: entity point origin (level space)
+			verts.push({
+				x: ei.getPointOriginX(li.def) + li.pxTotalOffsetX,
+				y: ei.getPointOriginY(li.def) + li.pxTotalOffsetY,
+			});
+
+			// Remaining vertices: the actual array points
+			for( i in 0...n ) {
+				var pt = fi.getPointGrid(i);
+				if( pt == null )
+					verts.push(null);
+				else
+					verts.push({
+						x: (pt.cx + 0.5) * li.def.gridSize + li.pxTotalOffsetX,
+						y: (pt.cy + 0.5) * li.def.gridSize + li.pxTotalOffsetY,
+					});
+			}
+
+			// Now check each segment.
+			// verts[0] is the entity origin (not an array element).
+			// verts[1..n] correspond to fi array indices 0..n-1.
+			// Inserting between verts[i] and verts[i+1] means insertIdx = i (array index).
+			var segCount = isLoop ? verts.length : verts.length - 1;
+
+			for( seg in 0...segCount ) {
+				var a = verts[seg];
+				var b = verts[(seg + 1) % verts.length];
+				if( a == null || b == null )
+					continue;
+
+				var mx = m.levelX * 1.0;
+				var my = m.levelY * 1.0;
+
+				var dx = b.x - a.x;
+				var dy = b.y - a.y;
+				var lenSq = dx*dx + dy*dy;
+				if( lenSq < 0.001 )
+					continue;
+
+				var t = ( (mx - a.x)*dx + (my - a.y)*dy ) / lenSq;
+				t = Math.max(0.0, Math.min(1.0, t));
+
+				var nearX = a.x + t*dx;
+				var nearY = a.y + t*dy;
+				var dist = Math.sqrt( (mx-nearX)*(mx-nearX) + (my-nearY)*(my-nearY) );
+
+				if( dist < bestDist ) {
+					bestDist = dist;
+					// seg=0 means between origin and array[0], so insertIdx=0
+					// seg=1 means between array[0] and array[1], so insertIdx=1
+					// etc.
+
+					// TODO - if snapToGrid is on, we should snap nearX/nearY to grid before returning them, otherwise the inserted point will be off-grid.
+					// Only do this if we ever store points as floats.
+					/*if( !snapToGrid() ) {
+					var gridSize = li.def.gridSize;
+					nearX = Std.int( (nearX - li.pxTotalOffsetX) / gridSize );
+					nearY = Std.int( (nearY - li.pxTotalOffsetY) / gridSize );*/
+
+					best = {
+						fi: fi,
+						ei: ei,
+						li: li,
+						insertIdx: seg,
+						snapX: nearX,
+						snapY: nearY,
+					};
+				}
+			}
+		}
+
+		return best;
+	}
+
 	override function onMouseMoveCursor(ev:hxd.Event, m:Coords) {
 		super.onMouseMoveCursor(ev, m);
 		updateChainRefPreview(m);
@@ -123,6 +268,27 @@ class EntityTool extends tool.LayerTool<Int> {
 
 	override function startUsing(ev:hxd.Event, m:Coords, ?extraParam:String) {
 		super.startUsing(ev,m,extraParam);
+
+		if( edgeInsertSnap != null ) {
+			var snap = edgeInsertSnap;
+			edgeInsertSnap = null;
+			edgeInsertGraphics.clear();
+
+			var gridSize = snap.li.def.gridSize;
+			var cx = Std.int( (snap.snapX - snap.li.pxTotalOffsetX) / gridSize );
+			var cy = Std.int( (snap.snapY - snap.li.pxTotalOffsetY) / gridSize );
+
+			snap.fi.insertArrayValue(snap.insertIdx);
+			snap.fi.parseValue(snap.insertIdx, cx + Const.POINT_SEPARATOR + cy);
+
+			editor.ge.emit( EntityFieldInstanceChanged(snap.ei, snap.fi) );
+			editor.curLevelTimeline.markEntityChange(snap.ei);
+			editor.curLevelTimeline.saveLayerState(snap.li);
+
+			stopUsing(m);
+			ev.cancel = true;
+			return;
+		}
 
 		var ge = editor.getGenericLevelElementAt(m, true);
 		switch ge {
@@ -231,6 +397,12 @@ class EntityTool extends tool.LayerTool<Int> {
 		}
 	}
 
+	override function stopUsing(m:Coords) {
+		edgeInsertSnap = null;
+		edgeInsertGraphics.clear();
+
+		super.stopUsing(m);
+	}
 
 	function removeAnyEntityOrPointAt(m:Coords) {
 		var ge = editor.getGenericLevelElementAt(m, true);
@@ -361,11 +533,38 @@ class EntityTool extends tool.LayerTool<Int> {
 	override function onMouseMove(ev:hxd.Event, m:Coords) {
 		super.onMouseMove(ev,m);
 
+		// Recompute edge snap whenever mouse moves, regardless of what's under cursor
+		edgeInsertGraphics.clear();
+		edgeInsertSnap = null;
+		
+
 		if( !ev.cancel ) {
 			var ge = editor.getGenericLevelElementAt(m);
 			switch ge {
 				case Entity(_), PointField(_): editor.selectionTool.onMouseMove(ev,m);
 				case _:
+					var editedEi = getCurrentlyEditedEntity();
+
+					// Only allow point insertion if currently editing a point field entity and not hovered over something
+
+					if (editedEi != null) {
+						// There is an entity currently being edited
+						// You can do global logic here, or compare to hovered one
+						//Sys.println('Currently editing: ' + editedEi.def.identifier);
+						
+						if( !isRunning() ) {
+							edgeInsertSnap = getEdgeInsertSnap(m, editedEi);
+							
+							if( edgeInsertSnap != null ) {
+								var zs = 1.0 / editor.camera.adjustedZoom;
+								var r = 5.0 * zs;
+								edgeInsertGraphics.lineStyle(2 * zs, 0x00ff88, 1.0);
+								edgeInsertGraphics.beginFill(0x00ff88, 0.35);
+								edgeInsertGraphics.drawCircle(edgeInsertSnap.snapX, edgeInsertSnap.snapY, r);
+								edgeInsertGraphics.endFill();
+							}
+						}
+					}
 			}
 		}
 	}
