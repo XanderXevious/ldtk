@@ -598,7 +598,21 @@ class GenericLevelElementGroup {
 
 
 	function snapToGrid() {
-		return true;
+		if( !editor.isSnappingToGrid() ) {
+			for( ge in elements ) { 
+				switch ge {
+					case Entity(_):
+						continue; // these are allowed to be free
+					case PointField(_):
+						// TODO - If ever we change PointFields to floats then they can be freely moved!
+						return true;
+					case _:
+						// If anything is not able to be freely moved in a group we snap all of them to grid
+						return true;
+				}
+			}
+		}
+		return false;
 	}
 
 
