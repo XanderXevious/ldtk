@@ -347,7 +347,7 @@ class EntityInstanceEditor extends dn.Process {
 	override function update() {
 		super.update();
 
-		var isOccupied = editor.resizeTool!=null && editor.resizeTool.isRunning() || editor.selectionTool.isRunning();
+		var isOccupied = (editor.resizeTool!=null && editor.resizeTool.isRunning()) || (editor.rotateTool!=null && editor.rotateTool.isRunning()) || editor.selectionTool.isRunning();
 		if( isOccupied && !jWindow.hasClass("faded") )
 			jWindow.addClass("faded");
 		if( !isOccupied && jWindow.hasClass("faded") )

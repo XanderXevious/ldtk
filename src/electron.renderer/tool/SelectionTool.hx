@@ -134,6 +134,7 @@ class SelectionTool extends Tool<Int> {
 					editor.levelRender.bleepEntity(ei);
 					ui.EntityInstanceEditor.openFor(ei);
 					editor.createResizeToolFor(ge);
+					editor.createRotateToolFor(ge);
 
 				case PointField(li, ei, fi, arrayIdx):
 					var t = editor.curTool.as(tool.lt.EntityTool);
@@ -261,6 +262,7 @@ class SelectionTool extends Tool<Int> {
 			group.clear();
 			ui.EntityInstanceEditor.closeExisting();
 			editor.clearResizeTool();
+			editor.clearRotateTool();
 		}
 	}
 

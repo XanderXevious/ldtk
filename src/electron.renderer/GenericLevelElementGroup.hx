@@ -712,6 +712,9 @@ class GenericLevelElementGroup {
 							if( editor.resizeTool!=null && editor.resizeTool.isOnEntity(oldEi) )
 								editor.createResizeToolFor( Entity(li,newEi) );
 
+							if (editor.rotateTool!=null && editor.rotateTool.isOnEntity(oldEi) )
+								editor.createRotateToolFor( Entity(li,newEi) );
+
 							if( ui.EntityInstanceEditor.existsFor(oldEi) )
 								ui.EntityInstanceEditor.openFor(newEi);
 

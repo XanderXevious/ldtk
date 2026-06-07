@@ -36,6 +36,7 @@ class Editor extends Page {
 	public var worldTool : WorldTool;
 	var panTool : tool.PanView;
 	public var resizeTool : Null<tool.ResizeTool>;
+	public var rotateTool : Null<tool.RotateTool>;
 	public var curTool(get,never) : tool.LayerTool<Dynamic>;
 	public var selectionTool: tool.SelectionTool;
 	var allLayerTools : Map<Int,tool.LayerTool<Dynamic>> = new Map();
@@ -1104,6 +1105,29 @@ class Editor extends Page {
 		resizeTool = new tool.ResizeTool(ge);
 	}
 
+	public function clearRotateTool() {
+		if( rotateTool != null ) {
+			if( rotateTool.isRunning() )
+				rotateTool.stopUsing( getMouse() );
+			rotateTool.destroy();
+		}
+		rotateTool = null;
+	}
+
+	public function invalidateRotateTool() {
+		if( rotateTool != null )
+			rotateTool.invalidate();
+	}
+
+	public function createRotateToolFor(ge:GenericLevelElement) {
+		clearRotateTool();
+		switch ge {
+			case Entity(li, ei) if( ei.def.allowRotation ):
+				rotateTool = new tool.RotateTool(ge);
+			case _:
+		}
+	}
+
 	function onMouseDown(ev:hxd.Event) {
 		if( isLocked() || !App.ME.hasGlContext )
 			return;
@@ -1117,6 +1141,9 @@ class Editor extends Page {
 
 		if( !ev.cancel && resizeTool!=null && !ui.ValuePicker.exists() )
 			resizeTool.onMouseDown( ev, m );
+
+		if( !ev.cancel && rotateTool != null && !ui.ValuePicker.exists() )
+    		rotateTool.onMouseDown( ev, m );
 
 		if( !ev.cancel && !project.isBackup() && !ui.ValuePicker.exists() )
 			rulers.onMouseDown( ev, m );
@@ -1147,6 +1174,9 @@ class Editor extends Page {
 
 		if( resizeTool!=null && resizeTool.isRunning() )
 			resizeTool.stopUsing(m);
+
+		if( rotateTool != null && rotateTool.isRunning() )
+    		rotateTool.stopUsing(m);
 
 		// Tool updates
 		if( selectionTool.isRunning() )
@@ -1183,6 +1213,11 @@ class Editor extends Page {
 			if( !ev.cancel && resizeTool!=null && !ui.ValuePicker.exists() ) {
 				resizeTool.onMouseMove(ev,m);
 				resizeTool.onMouseMoveCursor(cursorEvent,m);
+			}
+
+			if( !ev.cancel && rotateTool != null && !ui.ValuePicker.exists() ) {
+				rotateTool.onMouseMove(ev, m);
+				rotateTool.onMouseMoveCursor(cursorEvent, m);
 			}
 
 			if( !ev.cancel && !worldMode && !ui.ValuePicker.exists() ) {
@@ -2285,6 +2320,8 @@ class Editor extends Page {
 				ei._li.level.invalidateCachedError();
 				if( resizeTool!=null && resizeTool.isOnEntity(ei) )
 					clearResizeTool();
+				if( rotateTool!=null && rotateTool.isOnEntity(ei) )
+					clearRotateTool();
 
 			case EntityInstanceChanged(ei):
 				ei._li.level.invalidateCachedError();
