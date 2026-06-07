@@ -26,3 +26,6 @@
 
 --next
 --cmd haxelib git ldtk-haxe-api https://github.com/deepnight/ldtk-haxe-api.git --always
+
+--next
+--cmd node tools/patch_haxelibs.js

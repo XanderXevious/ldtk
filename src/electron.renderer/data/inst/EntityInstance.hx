@@ -15,6 +15,7 @@ class EntityInstance {
 	public var worldY(get,never) : Int;
 	public var customWidth : Null<Int>;
 	public var customHeight: Null<Int>;
+	public var rotation : Float; // degrees, 0-360
 
 	public var width(get,never) : Int;
 		inline function get_width() return customWidth!=null ? customWidth : def.width;
@@ -34,6 +35,7 @@ class EntityInstance {
 		_project = p;
 		_li = li;
 		defUid = entityDefUid;
+		rotation = 0;
 		this.iid = iid;
 	}
 
@@ -46,6 +48,10 @@ class EntityInstance {
 
 	inline function get_worldX() return Std.int( x + _li.level.worldX );
 	inline function get_worldY() return Std.int( y + _li.level.worldY );
+
+	public inline function getEffectiveRotation() : Float {
+		return def.allowRotation ? rotation : 0;
+	}
 
 	public function toJson(li:data.inst.LayerInstance) : ldtk.Json.EntityInstanceJson {
 		if( customWidth==def.width )
@@ -68,6 +74,7 @@ class EntityInstance {
 			height: height,
 			defUid: defUid,
 			px: [x,y],
+			rotation: def.allowRotation ? rotation : 0,
 			fieldInstances: {
 				var all = [];
 				for(fd in def.fieldDefs)
@@ -119,6 +126,9 @@ class EntityInstance {
 		var ei = new EntityInstance(project, li, JsonTools.readInt(json.defUid), json.iid);
 		ei.x = JsonTools.readInt( json.px[0], 0 );
 		ei.y = JsonTools.readInt( json.px[1], 0 );
+
+		ei.rotation = JsonTools.readNullableFloat( (cast json).rotation );
+		if( ei.rotation == null ) ei.rotation = 0;
 
 		ei.customWidth = JsonTools.readNullableInt( json.width );
 		if( ei.customWidth==ei.def.width )

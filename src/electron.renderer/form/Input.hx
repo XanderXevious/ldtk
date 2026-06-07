@@ -156,6 +156,8 @@ class Input<T> {
 							jInput.val( Std.string( parseInputValue() ) ); // Force clamping
 							jInput.addClass("editing");
 						}
+						if (delta != 0)
+							onSliderChange(parseInputValue());
 					})
 					.on("mouseup.slider", function(ev) {
 						if( ev.button!=0 )
@@ -225,6 +227,7 @@ class Input<T> {
 	public dynamic function fixValue(v:T) : T { return v; }
 	public dynamic function onChange() {}
 	public dynamic function onValueChange(v:T) {}
+	public dynamic function onSliderChange(v:T) {}
 
 	function parseInputValue() : T {
 		return jInput.val();

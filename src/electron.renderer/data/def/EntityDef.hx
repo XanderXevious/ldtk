@@ -12,6 +12,8 @@ class EntityDef {
 	public var tags : Tags;
 	public var exportToToc : Bool;
 	public var allowOutOfBounds : Bool;
+	public var allowRotation : Bool;
+	public var rotationSnapDegrees : Int; // 0 = free, 90 = cardinal only (0/90/180/270)
 	public var doc: Null<String>;
 
 	public var width : Int;
@@ -72,6 +74,8 @@ class EntityDef {
 		tags = new Tags();
 		exportToToc = false;
 		allowOutOfBounds = false;
+		allowRotation = false;
+		rotationSnapDegrees = 0;
 	}
 
 	public function isTileDefined() {
@@ -163,6 +167,8 @@ class EntityDef {
 		o.tags = Tags.fromJson(json.tags);
 		o.exportToToc = JsonTools.readBool( json.exportToToc, false );
 		o.allowOutOfBounds = JsonTools.readBool( json.allowOutOfBounds, false );
+		o.allowRotation = JsonTools.readBool( json.allowRotation, false );
+		o.rotationSnapDegrees = JsonTools.readInt( json.rotationSnapDegrees, 0 );
 
 		o.color = JsonTools.readColor( json.color, 0x0 );
 		o.tileOpacity = JsonTools.readFloat( json.tileOpacity, 1 );
@@ -205,6 +211,8 @@ class EntityDef {
 			tags: tags.toJson(),
 			exportToToc: exportToToc,
 			allowOutOfBounds: allowOutOfBounds,
+			allowRotation: allowRotation,
+			rotationSnapDegrees: rotationSnapDegrees,
 			doc: JsonTools.escapeNullableString(doc),
 
 			width: width,

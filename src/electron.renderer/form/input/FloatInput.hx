@@ -8,6 +8,7 @@ class FloatInput extends form.Input<Float> {
 	public var allowNull = false;
 	public var nullReplacement : Null<Float> = null;
 	var precision = 4;
+	var wrapAround = false;
 
 	public function new(j:js.jquery.JQuery, rawGetter:Void->Float, rawSetter:Float->Void) {
 		super(j, rawGetter, rawSetter);
@@ -84,6 +85,10 @@ class FloatInput extends form.Input<Float> {
 		this.max = max==null ? M.T_INT16_MAX : max;
 	}
 
+	public function enableWrapAround(enable:Bool) {
+		wrapAround = enable;
+	}
+
 	override function parseInputValue() : Float {
 		if( allowNull && StringTools.trim( jInput.val() ).length==0 )
 			return null;
@@ -96,6 +101,14 @@ class FloatInput extends form.Input<Float> {
 				v = 0;
 		}
 
-		return M.fclamp( v, min * (displayAsPct?100:1), max * (displayAsPct?100:1) );
+		if( wrapAround ) {
+			var range = max - min;
+			while( v < min )
+				v += range;
+			while( v > max )
+				v -= range;
+			return v;
+		}
+		else return M.fclamp( v, min * (displayAsPct?100:1), max * (displayAsPct?100:1) );
 	}
 }

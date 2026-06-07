@@ -545,6 +545,31 @@ class EditEntityDefs extends ui.modal.Panel {
 
 		// Out-of-bounds policy
 		var i = Input.linkToHtmlInput(curEntity.allowOutOfBounds, jEntityForm.find("#allowOutOfBounds"));
+
+		// Allow rotation
+		var i = Input.linkToHtmlInput(curEntity.allowRotation, jEntityForm.find("input[name='allowRotation']"));
+		i.linkEvent(EntityDefChanged);
+		i.onValueChange = (v)->{
+			if( !v ) curEntity.rotationSnapDegrees = 0;
+			editor.ge.emit(EntityDefChanged);
+		}
+
+		// Rotation snap
+		var jRotSnap = jEntityForm.find("select[name='rotationSnapDegrees']");
+		jRotSnap.empty();
+		for( snap in [0, 90] ) {
+			var jOpt = new J('<option value="$snap"/>');
+			jOpt.appendTo(jRotSnap);
+			jOpt.text( snap==0 ? "Free (any angle)" : "Cardinal (0°/90°/180°/270°)" );
+			if( curEntity.rotationSnapDegrees == snap )
+				jOpt.prop("selected", true);
+		}
+		jRotSnap.prop("disabled", !curEntity.allowRotation);
+		jRotSnap.change( _->{
+			curEntity.rotationSnapDegrees = Std.parseInt( jRotSnap.val() );
+			editor.ge.emit(EntityDefChanged);
+		});
+
 		i.linkEvent(EntityDefChanged);
 
 		// Pivot

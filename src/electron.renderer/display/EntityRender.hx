@@ -285,6 +285,7 @@ class EntityRender extends dn.Process {
 		fieldsRenderInvalidated = false;
 		updateCore();
 		renderFields();
+		updateLayout(); // ensure rotation applied
 	}
 
 
@@ -354,6 +355,8 @@ class EntityRender extends dn.Process {
 
 		root.x = ei.x;
 		root.y = ei.y;
+
+		core.rotation = ei.getEffectiveRotation() * Math.PI / 180;
 
 		final fullVis = ei._li==Editor.ME.curLayerInstance;
 		core.alpha = fullVis ? 1 : ei._li.def.inactiveOpacity;

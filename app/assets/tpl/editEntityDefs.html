@@ -52,6 +52,18 @@
 					<input type="checkbox" name="allowOutOfBounds" id="allowOutOfBounds"/>
 					Can be out of level bounds
 				</label>
+
+				<dt>
+					<label for="allowRotation">Allow rotation</label>
+					<info>If enabled, entity instances can be assigned a rotation angle.</info>
+				</dt>
+				<dd>
+					<input type="checkbox" name="allowRotation" id="allowRotation"/>
+					<select name="rotationSnapDegrees" title="Snap rotation to specific angles">
+						<option value="0">Free (any angle)</option>
+						<option value="90">Cardinal only (0°/90°/180°/270°)</option>
+					</select>
+				</dd>
 			</dd>
 
 			<dt>

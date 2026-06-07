@@ -221,6 +221,32 @@ class EntityInstanceEditor extends dn.Process {
 			updateInstancePropsForm();
 		});
 
+		// Rotation block
+		var jRotBlock = jPropsForm.find(".rotation");
+		if( ei.def.allowRotation ) {
+			jRotBlock.show();
+			var i = new form.input.FloatInput(
+				jRotBlock.find("[name=rotation]"),
+				()->ei.rotation,
+				(v)->{
+					ei.rotation = v;
+				}
+			);
+			i.setBounds(0, 360);
+			var step = ei.def.rotationSnapDegrees > 0 ? 90.0 : 0.5;
+			i.setValueStep(step);
+			i.enableWrapAround(true);
+			i.enableSlider(ei.def.rotationSnapDegrees > 0 ? 360 : 40, false);
+			i.linkEvent( EntityInstanceChanged(ei) );
+			i.onChange = ()->onEntityFieldChanged();
+			i.onSliderChange = (v)->{
+				ei.rotation = v;
+				editor.ge.emit( EntityInstanceChanged(ei) );
+			};
+		}
+		else
+			jRotBlock.hide();
+
 		var sliderSpeed = UNIT_GRID ? 0.05 : 1;
 		// X
 		var i = Input.linkToHtmlInput(ei.x, jCoords.find("[name=x]"));
