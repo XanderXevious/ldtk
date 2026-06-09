@@ -488,12 +488,21 @@ class FieldInstanceRender {
 						var startY = fy;
 
 						for(i in 0...fi.getArrayLength()) {
-							var pt = fi.getPointGrid(i);
-							if( pt==null )
-								continue;
+							var tx : Float;
+							var ty : Float;
+							if( fd.type == F_FloatPoint ) {
+								var fp = fi.getFloatPointObj(i);
+								if( fp == null ) continue;
+								tx = (fp.cx + 0.5) * ld.gridSize - ei.x + ei._li.pxTotalOffsetX;
+    							ty = (fp.cy + 0.5) * ld.gridSize - ei.y + ei._li.pxTotalOffsetY;
+							}
+							else {
+								var pt = fi.getPointGrid(i);
+								if( pt == null ) continue;
+								tx = M.round( (pt.cx+0.5)*ld.gridSize - ei.x + ei._li.pxTotalOffsetX );
+								ty = M.round( (pt.cy+0.5)*ld.gridSize - ei.y + ei._li.pxTotalOffsetY );
+							}
 
-							var tx = M.round( (pt.cx+0.5)*ld.gridSize - ei.x + ei._li.pxTotalOffsetX );
-							var ty = M.round( (pt.cy+0.5)*ld.gridSize - ei.y + ei._li.pxTotalOffsetY );
 							if( fd.editorDisplayMode!=Points )
 								renderSimpleLink(g, baseColor, fx,fy, tx,ty, fi.def.editorLinkStyle);
 
@@ -554,6 +563,7 @@ class FieldInstanceRender {
 				case F_Color:
 				case F_Enum(enumDefUid):
 				case F_Point:
+				case F_FloatPoint:
 				case F_Path: multiLinesArray = true;
 				case F_EntityRef: multiLinesArray = true; showArrayBrackets = false;
 				case F_Tile:

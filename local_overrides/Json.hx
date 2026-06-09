@@ -1752,6 +1752,9 @@ enum FieldType {
 
 	@added("1.0.0")
 	F_Tile;
+
+	@added("1.5.3")
+	F_FloatPoint;
 }
 
 

@@ -127,7 +127,7 @@ class EntityTool extends tool.LayerTool<Int> {
 		var best = null;
 
 		for( fi in ei.fieldInstances ) {
-			if( fi.def.type != F_Point )
+			if( fi.def.type != F_Point && fi.def.type != F_FloatPoint )
 				continue;
 
 			var isPath = switch fi.def.editorDisplayMode {
@@ -156,14 +156,26 @@ class EntityTool extends tool.LayerTool<Int> {
 
 			// Remaining vertices: the actual array points
 			for( i in 0...n ) {
-				var pt = fi.getPointGrid(i);
-				if( pt == null )
-					verts.push(null);
-				else
-					verts.push({
-						x: (pt.cx + 0.5) * li.def.gridSize + li.pxTotalOffsetX,
-						y: (pt.cy + 0.5) * li.def.gridSize + li.pxTotalOffsetY,
-					});
+				if( fi.def.type == F_FloatPoint ) {
+					var fp = fi.getFloatPointObj(i);
+					if( fp == null )
+						verts.push(null);
+					else
+						verts.push({
+							x: (fp.cx + 0.5) * li.def.gridSize + li.pxTotalOffsetX,
+                			y: (fp.cy + 0.5) * li.def.gridSize + li.pxTotalOffsetY,
+						});
+				}
+				else {
+					var pt = fi.getPointGrid(i);
+					if( pt == null )
+						verts.push(null);
+					else
+						verts.push({
+							x: (pt.cx + 0.5) * li.def.gridSize + li.pxTotalOffsetX,
+							y: (pt.cy + 0.5) * li.def.gridSize + li.pxTotalOffsetY,
+						});
+				}
 			}
 
 			// Now check each segment.
@@ -275,11 +287,29 @@ class EntityTool extends tool.LayerTool<Int> {
 			edgeInsertGraphics.clear();
 
 			var gridSize = snap.li.def.gridSize;
-			var cx = Std.int( (snap.snapX - snap.li.pxTotalOffsetX) / gridSize );
-			var cy = Std.int( (snap.snapY - snap.li.pxTotalOffsetY) / gridSize );
 
 			snap.fi.insertArrayValue(snap.insertIdx);
-			snap.fi.parseValue(snap.insertIdx, cx + Const.POINT_SEPARATOR + cy);
+			if( snap.fi.def.type == F_FloatPoint ) {
+				var li = snap.li;
+				var fcx : Float;
+				var fcy : Float;
+				if( App.ME.settings.v.grid ) {
+					// Snap to cell, store as float matching F_Point behavior exactly
+					fcx = Std.int( (snap.snapX - li.pxTotalOffsetX) / gridSize ) * 1.0;
+					fcy = Std.int( (snap.snapY - li.pxTotalOffsetY) / gridSize ) * 1.0;
+				}
+				else {
+					// Free float precision, accounting for +0.5 render offset
+					fcx = (snap.snapX - li.pxTotalOffsetX) / gridSize - 0.5;
+					fcy = (snap.snapY - li.pxTotalOffsetY) / gridSize - 0.5;
+				}
+				snap.fi.parseValue(snap.insertIdx, fcx + Const.POINT_SEPARATOR + fcy);
+			}
+			else {
+				var cx = Std.int( (snap.snapX - snap.li.pxTotalOffsetX) / gridSize );
+				var cy = Std.int( (snap.snapY - snap.li.pxTotalOffsetY) / gridSize );
+				snap.fi.parseValue(snap.insertIdx, cx + Const.POINT_SEPARATOR + cy);
+			}
 
 			editor.ge.emit( EntityFieldInstanceChanged(snap.ei, snap.fi) );
 			editor.curLevelTimeline.markEntityChange(snap.ei);
@@ -415,23 +445,48 @@ class EntityTool extends tool.LayerTool<Int> {
 				return true;
 
 			case PointField(li, ei, fi, arrayIdx):
-				var pt = fi.getPointGrid(arrayIdx);
-				if( pt!=null && pt.cx==m.cx && pt.cy==m.cy ) {
-					if( fi.def.isArray )
-						fi.removeArrayValue(arrayIdx);
+				if( fi.def.type == F_FloatPoint ) {
+					var fp = fi.getFloatPointObj(arrayIdx);
+					var mouseCx = (m.layerX - li.pxParallaxX) / li.def.gridSize - 0.5;
+					var mouseCy = (m.layerY - li.pxParallaxY) / li.def.gridSize - 0.5;
+					if( fp != null
+						&& M.fabs(fp.cx - mouseCx) < 0.5
+						&& M.fabs(fp.cy - mouseCy) < 0.5 ) {
+						if( fi.def.isArray )
+							fi.removeArrayValue(arrayIdx);
+						else
+							fi.parseValue(arrayIdx, null);
+						editor.ge.emit( EntityFieldInstanceChanged(ei, fi) );
+						editor.selectionTool.select([ GenericLevelElement.Entity(li, ei) ]);
+						editor.levelRender.bleepPoint(
+							(fp.cx + 0.5) * li.def.gridSize,
+							(fp.cy + 0.5) * li.def.gridSize,
+							ei.getSmartColor(true)
+						);
+						return true;
+					}
 					else
-						fi.parseValue(arrayIdx, null);
-					editor.ge.emit( EntityFieldInstanceChanged(ei,fi) );
-					editor.selectionTool.select([ GenericLevelElement.Entity(li,ei) ]);
-					editor.levelRender.bleepPoint(
-						(pt.cx+0.5) * li.def.gridSize,
-						(pt.cy+0.5) * li.def.gridSize,
-						ei.getSmartColor(true)
-					);
-					return true;
+						return false;
 				}
-				else
-					return false;
+				else {
+					var pt = fi.getPointGrid(arrayIdx);
+					if( pt!=null && pt.cx==m.cx && pt.cy==m.cy ) {
+						if( fi.def.isArray )
+							fi.removeArrayValue(arrayIdx);
+						else
+							fi.parseValue(arrayIdx, null);
+						editor.ge.emit( EntityFieldInstanceChanged(ei,fi) );
+						editor.selectionTool.select([ GenericLevelElement.Entity(li,ei) ]);
+						editor.levelRender.bleepPoint(
+							(pt.cx+0.5) * li.def.gridSize,
+							(pt.cy+0.5) * li.def.gridSize,
+							ei.getSmartColor(true)
+						);
+						return true;
+					}
+					else
+						return false;
+				}
 
 			case _:
 		}

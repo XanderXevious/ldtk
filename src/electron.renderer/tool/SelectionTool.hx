@@ -141,9 +141,16 @@ class SelectionTool extends Tool<Int> {
 					if( t!=null )
 						t.selectValue(ei.defUid);
 
-					var pt = fi.getPointGrid(arrayIdx);
-					if( pt!=null)
-						editor.levelRender.bleepLayerRectCase( li, pt.cx, pt.cy, 1, 1, ei.def.color );
+					if( fi.def.type == F_FloatPoint ) {
+						var fp = fi.getFloatPointObj(arrayIdx);
+						if( fp != null )
+							editor.levelRender.bleepLayerRectCase( li, Std.int(fp.cx), Std.int(fp.cy), 1, 1, ei.getSmartColor(false) );
+					}
+					else {
+						var pt = fi.getPointGrid(arrayIdx);
+						if( pt!=null)
+							editor.levelRender.bleepLayerRectCase( li, pt.cx, pt.cy, 1, 1, ei.def.color );
+					}
 					ui.EntityInstanceEditor.openFor(ei);
 			}
 
@@ -362,13 +369,13 @@ class SelectionTool extends Tool<Int> {
 				case GridCell(li, cx, cy):
 				case Entity(li, ei):
 					for(fi in ei.fieldInstances)
-						if( fi.def.type==F_Point )
+						if( fi.def.type==F_Point || fi.def.type==F_FloatPoint)
 							for(i in 0...fi.getArrayLength())
 								group.add( PointField(li,ei,fi,i) );
 				case PointField(li, ei, fi, arrayIdx):
 					group.add( Entity(li,ei) );
 					for(fi in ei.fieldInstances)
-						if( fi.def.type==F_Point )
+						if( fi.def.type==F_Point || fi.def.type==F_FloatPoint )
 							for(i in 0...fi.getArrayLength())
 								group.add( PointField(li,ei,fi,i) );
 
@@ -456,13 +463,25 @@ class SelectionTool extends Tool<Int> {
 
 						// Entity points
 						for(fi in ei.fieldInstances) {
-							if( fi.def.type!=F_Point )
-								continue;
-
-							for(i in 0...fi.getArrayLength()) {
-								var pt = fi.getPointGrid(i);
-								if( pt!=null && pt.cx>=cLeft && pt.cx<=cRight && pt.cy>=cTop && pt.cy<=cBottom )
-									all.push( PointField(li, ei, fi, i) );
+							if( fi.def.type == F_Point ) {
+								for(i in 0...fi.getArrayLength()) {
+									var pt = fi.getPointGrid(i);
+									if( pt!=null && pt.cx>=cLeft && pt.cx<=cRight
+										&& pt.cy>=cTop && pt.cy<=cBottom )
+										all.push( PointField(li, ei, fi, i) );
+								}
+							}
+							else if( fi.def.type == F_FloatPoint ) {
+								for(i in 0...fi.getArrayLength()) {
+									var fp = fi.getFloatPointObj(i);
+									if( fp != null ) {
+										var fpCx = Std.int(fp.cx);
+										var fpCy = Std.int(fp.cy);
+										if( fpCx >= cLeft && fpCx <= cRight
+											&& fpCy >= cTop && fpCy <= cBottom )
+											all.push( PointField(li, ei, fi, i) );
+									}
+								}
 							}
 						}
 					}

@@ -177,6 +177,7 @@ class OgmoLoader {
 								fd.canBeNull = true;
 
 							case F_Point:
+							case F_FloatPoint:
 
 							case F_Path:
 								fd.setAcceptFileTypes( valJson.extensions.join(" ") );
@@ -398,6 +399,7 @@ class OgmoLoader {
 												fi.parseValue(0, ev);
 
 											case F_Point:
+											case F_FloatPoint:
 											case F_Path:
 												if( rawValue!="" && rawValue!=null )
 													fi.parseValue(0, rawValue.split(":")[1]);

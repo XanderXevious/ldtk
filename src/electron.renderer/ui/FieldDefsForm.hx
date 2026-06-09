@@ -172,6 +172,7 @@ class FieldDefsForm {
 		if( isEntityField() ) {
 			types.push(F_EntityRef);
 			types.push(F_Point);
+			types.push(F_FloatPoint);
 		}
 
 		for(type in types) {
@@ -470,7 +471,7 @@ class FieldDefsForm {
 			function(k) {
 				return switch k {
 					case Hidden: true;
-					case ValueOnly: curField.type!=F_Point;
+					case ValueOnly: curField.type!=F_Point && curField.type!=F_FloatPoint;
 					case NameAndValue: true;
 					case ArrayCountNoLabel, ArrayCountWithLabel: curField.isArray;
 
@@ -484,10 +485,10 @@ class FieldDefsForm {
 						curField.type==F_EntityRef;
 
 					case Points, PointStar:
-						curField.type==F_Point && isEntityField();
+						(curField.type==F_Point || curField.type==F_FloatPoint) && isEntityField();
 
 					case PointPath, PointPathLoop:
-						curField.type==F_Point && curField.isArray && isEntityField();
+						(curField.type==F_Point || curField.type==F_FloatPoint) && curField.isArray && isEntityField();
 
 					case RadiusPx, RadiusGrid:
 						!curField.isArray && ( curField.type==F_Int || curField.type==F_Float ) && isEntityField();
@@ -772,7 +773,7 @@ class FieldDefsForm {
 				});
 
 
-			case F_Int, F_Float, F_String, F_Point:
+			case F_Int, F_Float, F_String, F_Point, F_FloatPoint:
 				var defInput = jForm.find("input[name=fDef]");
 				if( curField.defaultOverride != null )
 					defInput.val( Std.string( curField.getUntypedDefault() ) );
@@ -789,6 +790,7 @@ class FieldDefsForm {
 						case F_Float: Std.string( curField.fClamp(0) );
 						case F_String, F_Text, F_Path: "";
 						case F_Point: "0"+Const.POINT_SEPARATOR+"0";
+						case F_FloatPoint: "0"+Const.POINT_SEPARATOR+"0";
 						case F_Bool, F_Color, F_Enum(_): "N/A";
 						case F_EntityRef: "N/A";
 						case F_Tile: "N/A";

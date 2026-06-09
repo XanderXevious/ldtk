@@ -156,6 +156,7 @@ class FieldInstance {
 				case F_Color: return getColorAsInt(arrayIdx)==def.getDefault();
 				case F_Enum(enumDefUid): return false; // TODO support default enum values
 				case F_Point: return false;
+				case F_FloatPoint: return false;
 				case F_Path: return getFilePath(arrayIdx)==def.getDefault();
 				case F_Tile: return getFilePath(arrayIdx)==def.getDefault();
 				case F_EntityRef: return false;
@@ -259,6 +260,19 @@ class FieldInstance {
 					else
 						setInternal(arrayIdx, null);
 				}
+
+			case F_FloatPoint:
+				raw = StringTools.trim(raw);
+				if( raw.indexOf(Const.POINT_SEPARATOR) < 0 )
+					setInternal(arrayIdx, null);
+				else {
+					var x = Std.parseFloat( raw.split(Const.POINT_SEPARATOR)[0] );
+					var y = Std.parseFloat( raw.split(Const.POINT_SEPARATOR)[1] );
+					if( dn.M.isValidNumber(x) && dn.M.isValidNumber(y) )
+						setInternal( arrayIdx, V_String(x + Const.POINT_SEPARATOR + y) );
+					else
+						setInternal(arrayIdx, null);
+				}
 		}
 	}
 
@@ -339,7 +353,7 @@ class FieldInstance {
 		if( !def.canBeNull && valueIsNull(arrayIdx) )
 			switch def.type {
 				case F_Int, F_Float, F_String, F_Text, F_Bool, F_Color:
-				case F_Enum(_), F_Point, F_Path, F_EntityRef, F_Tile:
+				case F_Enum(_), F_Point, F_FloatPoint, F_Path, F_EntityRef, F_Tile:
 					return "Value required";
 			}
 
@@ -352,6 +366,7 @@ class FieldInstance {
 			case F_Bool:
 			case F_Color:
 			case F_Point:
+			case F_FloatPoint:
 			case F_Enum(enumDefUid):
 			case F_Path:
 				if( !valueIsNull(arrayIdx) ) {
@@ -413,6 +428,7 @@ class FieldInstance {
 			case F_Path: getFilePath(arrayIdx);
 			case F_Bool: getBool(arrayIdx);
 			case F_Point: getPointStr(arrayIdx);
+			case F_FloatPoint: getFloatPointStr(arrayIdx);
 			case F_Enum(name): getEnumValue(arrayIdx);
 			case F_EntityRef: getEntityRefIid(arrayIdx);
 			case F_Tile: getTileRectStr(arrayIdx);
@@ -469,6 +485,7 @@ class FieldInstance {
 			case F_Bool: getBool(arrayIdx);
 			case F_Enum(name): getEnumValue(arrayIdx);
 			case F_Point: getPointStr(arrayIdx);
+			case F_FloatPoint: getFloatPointStr(arrayIdx);
 			case F_EntityRef: getEntityRefForDisplay(arrayIdx);
 			case F_Tile: getTileRectStr(arrayIdx);
 		}
@@ -480,6 +497,7 @@ class FieldInstance {
 			case F_Bool, F_Color: return Std.string(v);
 			case F_Enum(name): return '$v';
 			case F_Point: return '$v';
+			case F_FloatPoint: return '$v';
 			case F_String, F_Text, F_Path: return '"$v"';
 			case F_EntityRef: return '@($v)';
 			case F_Tile: return '$v';
@@ -501,6 +519,7 @@ class FieldInstance {
 			case F_Bool: getBool(arrayIdx);
 			case F_Color: getColorAsHexStr(arrayIdx);
 			case F_Point: getPointGrid(arrayIdx);
+			case F_FloatPoint: getFloatPointObj(arrayIdx);
 			case F_Enum(enumDefUid): getEnumValue(arrayIdx);
 
 			case F_EntityRef:
@@ -555,6 +574,7 @@ class FieldInstance {
 					}
 
 			case F_Point:
+			case F_FloatPoint:
 			case F_Path:
 			case F_EntityRef:
 			case F_Tile:
@@ -771,6 +791,9 @@ class FieldInstance {
 	}
 
 	public function getPointStr(arrayIdx:Int) : Null<String> {
+		if( def.type == F_FloatPoint ) {
+			Sys.println("getPointStr called on a non-Point field, this is likely a bug in the code. Please report it to the developers with the following stack trace:");
+		}
 		require( F_Point );
 		return isUsingDefault(arrayIdx) ? def.getPointDefault() : switch internalValues[arrayIdx] {
 			case V_String(v): v;
@@ -779,11 +802,31 @@ class FieldInstance {
 	}
 
 	public function getPointGrid(arrayIdx:Int) : Null<{ cx:Int, cy:Int }> {
+		if( def.type == F_FloatPoint ) {
+			Sys.println("getPointGrid called on a non-Point field, this is likely a bug in the code. Please report it to the developers with the following stack trace:");
+		}
 		require( F_Point );
 		var raw = getPointStr(arrayIdx);
 		return raw==null ? null : {
 			cx : Std.parseInt( raw.split(Const.POINT_SEPARATOR)[0] ),
 			cy : Std.parseInt( raw.split(Const.POINT_SEPARATOR)[1] ),
+		}
+	}
+
+	public function getFloatPointStr(arrayIdx:Int) : Null<String> {
+		require( F_FloatPoint );
+		return isUsingDefault(arrayIdx) ? null : switch internalValues[arrayIdx] {
+			case V_String(v): v;
+			case _: throw "unexpected";
+		}
+	}
+
+	public function getFloatPointObj(arrayIdx:Int) : Null<{ cx:Float, cy:Float }> {
+		require( F_FloatPoint );
+		var raw = getFloatPointStr(arrayIdx);
+		return raw == null ? null : {
+			cx: Std.parseFloat( raw.split(Const.POINT_SEPARATOR)[0] ),
+			cy: Std.parseFloat( raw.split(Const.POINT_SEPARATOR)[1] ),
 		}
 	}
 
@@ -835,6 +878,21 @@ class FieldInstance {
 					var i = 0;
 					while( i<getArrayLength() ) {
 						var pt = getPointGrid(i);
+						if( pt!=null && ( pt.cx<0 || pt.cx>=li.cWid || pt.cy<0 || pt.cy>=li.cHei ) ) {
+							App.LOG.add("tidy", 'Removed pt ${pt.cx},${pt.cy} in $this (out of bounds)');
+							removeArrayValue(i);
+							anyChange = true;
+						}
+						else
+							i++;
+					}
+				}
+
+			case F_FloatPoint:
+				if( li!=null ) {
+					var i = 0;
+					while( i<getArrayLength() ) {
+						var pt = getFloatPointObj(i);
 						if( pt!=null && ( pt.cx<0 || pt.cx>=li.cWid || pt.cy<0 || pt.cy>=li.cHei ) ) {
 							App.LOG.add("tidy", 'Removed pt ${pt.cx},${pt.cy} in $this (out of bounds)');
 							removeArrayValue(i);

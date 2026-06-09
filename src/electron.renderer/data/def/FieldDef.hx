@@ -70,7 +70,7 @@ class FieldDef {
 		editorShowInWorld = true;
 		editorCutLongValues = true;
 		identifier = "NewField"+uid;
-		canBeNull = type==F_String || type==F_Text || type==F_Path || type==F_Point || type==F_EntityRef && !isArray;
+		canBeNull = type==F_String || type==F_Text || type==F_Path || type==F_Point || type==F_FloatPoint || type==F_EntityRef && !isArray;
 		arrayMinLength = arrayMaxLength = null;
 		textLanguageMode = null;
 		min = max = null;
@@ -94,6 +94,7 @@ class FieldDef {
 			case F_Color:
 			case F_Enum(enumDefUid):
 			case F_Point: editorDisplayMode = PointPath;
+			case F_FloatPoint: editorDisplayMode = PointPath;
 			case F_Path:
 			case F_EntityRef: editorDisplayMode = RefLinkBetweenCenters;
 			case F_Tile: editorDisplayMode = EntityTile;
@@ -106,7 +107,7 @@ class FieldDef {
 			case F_String, F_Text: false;
 			case F_Color: true;
 			case F_Enum(enumDefUid): false;
-			case F_Point, F_Path: false;
+			case F_Point, F_FloatPoint, F_Path: false;
 			case F_EntityRef: false;
 			case F_Tile: false;
 		};
@@ -230,7 +231,7 @@ class FieldDef {
 			case F_Color: "#99d367";
 			case F_Enum(enumDefUid): "#ff4b4b";
 			case F_Path: "#7779c9";
-			case F_Point: "#7779c9";
+			case F_Point, F_FloatPoint: "#7779c9";
 			case F_EntityRef: "#7779c9";
 			case F_Tile: "#99d367";
 		}
@@ -251,6 +252,7 @@ class FieldDef {
 			case F_Bool: "Bool";
 			case F_Color: "Color";
 			case F_Point: "Point";
+			case F_FloatPoint: "FloatPoint";
 			case F_Enum(enumDefUid): "Enum."+_project.defs.getEnumDef(enumDefUid).identifier;
 			case F_Path: "File path";
 			case F_EntityRef: "Entity ref";
@@ -268,6 +270,7 @@ class FieldDef {
 			case F_Bool: "Bool";
 			case F_Color: "Color";
 			case F_Point: "Point";
+			case F_FloatPoint: "FloatPoint";
 			case F_Enum(enumDefUid):
 				var ed = _project.defs.getEnumDef(enumDefUid);
 				( ed.isExternal() ? "ExternEnum." : "LocalEnum." ) + ed.identifier;
@@ -351,6 +354,11 @@ class FieldDef {
 
 	public function getPointDefault() : Null<String> {
 		require(F_Point);
+		return null;
+	}
+
+	public function getFloatPointDefault() : Null<String> {
+		require(F_FloatPoint);
 		return null;
 	}
 
@@ -485,7 +493,7 @@ class FieldDef {
 				else if( rawDef=="false" ) defaultOverride = V_Bool(false);
 				else defaultOverride = null;
 
-			case F_Point:
+			case F_Point, F_FloatPoint:
 				rawDef = StringTools.trim(rawDef);
 				if( rawDef.indexOf(Const.POINT_SEPARATOR)<0 )
 					defaultOverride = null;
@@ -522,6 +530,7 @@ class FieldDef {
 			case F_Path: null;
 			case F_Bool: getBoolDefault();
 			case F_Point: getPointDefault();
+			case F_FloatPoint: getFloatPointDefault();
 			case F_Enum(name): getEnumDefault();
 			case F_EntityRef: null;
 			case F_Tile: null;

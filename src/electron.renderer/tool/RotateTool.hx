@@ -12,6 +12,10 @@ class RotateTool extends Tool<Int> {
 	var invalidated = true;
 	var _handlePos : Null<{ x:Float, y:Float }>;
 
+	public var previewOffsetX : Float = 0;
+	public var previewOffsetY : Float = 0;
+	public var hasPreviewOffset : Bool = false;
+
 	public function new(ge:GenericLevelElement) {
 		super();
 		this.ge = ge;
@@ -26,6 +30,23 @@ class RotateTool extends Tool<Int> {
 			case Entity(li, ei): ei;
 			case _: null;
 		}
+	}
+
+	// In RotateTool.hx
+	public function setPreviewOffset(ox:Float, oy:Float) {
+		previewOffsetX = ox;
+		previewOffsetY = oy;
+		hasPreviewOffset = true;
+		_handlePos = null;
+		render();
+	}
+
+	public function clearPreviewOffset() {
+		previewOffsetX = 0;
+		previewOffsetY = 0;
+		hasPreviewOffset = false;
+		_handlePos = null;
+		render();
 	}
 
 	// Returns handle position in level space (absolute, like ResizeTool handles)
@@ -49,8 +70,8 @@ class RotateTool extends Tool<Int> {
 
 		// Add entity position to get level-space coords
 		_handlePos = {
-			x: ei.x + rotX,
-			y: ei.y + rotY,
+			x: ei.x + (hasPreviewOffset ? previewOffsetX : 0) + rotX,
+			y: ei.y + (hasPreviewOffset ? previewOffsetY : 0) + rotY,
 		}
 		return _handlePos;
 	}
@@ -66,8 +87,8 @@ class RotateTool extends Tool<Int> {
 		// Line from entity position to handle
 		g.lineStyle(1 * zoomScale, 0xff9100, 0.6);
 		var lineEnd = {
-			x: ei.x + (hp.x - ei.x) * 0.5,
-			y: ei.y + (hp.y - ei.y) * 0.5,
+			x: ei.x + (hp.x - ei.x +(hasPreviewOffset ? previewOffsetX : 0)) * 0.5,
+			y: ei.y + (hp.y - ei.y+ (hasPreviewOffset ? previewOffsetY : 0)) * 0.5,
 		};
 		g.moveTo(lineEnd.x, lineEnd.y);
 		g.lineTo(hp.x, hp.y);

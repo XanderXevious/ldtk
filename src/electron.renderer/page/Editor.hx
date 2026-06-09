@@ -1020,12 +1020,24 @@ class Editor extends Page {
 						else {
 							// Points
 							for(fi in ei.fieldInstances) {
-								if( fi.def.type!=F_Point )
-									continue;
-								for(i in 0...fi.getArrayLength()) {
-									var pt = fi.getPointGrid(i);
-									if( pt!=null && m.cx==pt.cx && m.cy==pt.cy )
-										ge = GenericLevelElement.PointField(li, ei, fi, i);
+								if( fi.def.type==F_Point) {
+									for(i in 0...fi.getArrayLength()) {
+										var pt = fi.getPointGrid(i);
+										if( pt!=null && m.cx==pt.cx && m.cy==pt.cy )
+											ge = GenericLevelElement.PointField(li, ei, fi, i);
+									}
+								}
+								else if( fi.def.type==F_FloatPoint) {
+									for(i in 0...fi.getArrayLength()) {
+										var fp = fi.getFloatPointObj(i);
+										// Convert mouse pixel pos to same cell space as stored cx/cy
+										var mouseCx = (m.layerX - li.pxParallaxX) / li.def.gridSize - 0.5;
+										var mouseCy = (m.layerY - li.pxParallaxY) / li.def.gridSize - 0.5;
+										if( fp != null
+											&& M.fabs(fp.cx - mouseCx) < 0.5
+											&& M.fabs(fp.cy - mouseCy) < 0.5 )
+											ge = GenericLevelElement.PointField(li, ei, fi, i);
+									}
 								}
 							}
 						}

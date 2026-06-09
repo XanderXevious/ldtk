@@ -336,6 +336,52 @@ class FieldInstancesForm {
 					jPoint.text( fi.getPointStr(arrayIdx) );
 				}
 
+			case F_FloatPoint:
+				if( fi.valueIsNull(arrayIdx) && !fi.def.canBeNull || !fi.def.isArray ) {
+					// Button mode
+					var jPick = new J('<button/>');
+					jPick.attr("id", domId);
+					if( !fi.valueIsNull(arrayIdx) )
+						jPick.addClass("gray");
+					jPick.appendTo(jTarget);
+					jPick.addClass("point");
+					if( fi.valueIsNull(arrayIdx) && !fi.def.canBeNull ) {
+						markError(jPick);
+						jPick.text("FloatPoint required!");
+					}
+					else {
+						jPick.addClass("dark");
+						jPick.text( fi.valueIsNull(arrayIdx) ? "<No float point>" : fi.getFloatPointStr(arrayIdx) );
+					}
+					jPick.click( function(_) {
+						if( Editor.ME.isSpecialToolActive(tool.PickPoint) ) {
+							Editor.ME.clearSpecialTool();
+							renderForm();
+						}
+						else {
+							jPick.text("Cancel");
+							startFloatPointEditing(fi, arrayIdx);
+						}
+					});
+
+					if( fi.def.canBeNull && !fi.valueIsNull(arrayIdx) ) {
+						var jRem = new J('<button class="transparent removePoint">x</button>');
+						jRem.appendTo(jTarget);
+						jRem.click( (_) -> {
+							fi.parseValue(arrayIdx, null);
+							onFieldChange(fi);
+						});
+					}
+				}
+				else {
+					// Text mode (array display)
+					var jPoint = new J('<span class="point"/>');
+					jPoint.appendTo(jTarget);
+					var fp = fi.getFloatPointObj(arrayIdx);
+					jPoint.text( fp == null ? "null"
+						: dn.M.truncateStr(fp.cx, 2) + "," + dn.M.truncateStr(fp.cy, 2) );
+				}
+
 
 			case F_Enum(defUid):
 				var ed = Editor.ME.project.defs.getEnumDef(defUid);
@@ -676,6 +722,8 @@ class FieldInstancesForm {
 	function startPointsEditing(fi:data.inst.FieldInstance, editIdx:Int) {
 		var t = new tool.PickPoint();
 
+		Sys.println("Starting point picking for field ${fi.def.identifier}, current value: ${fi.getForDisplay(editIdx)}");
+
 		t.pickOrigin = { cx:getInstanceCx(), cy:getInstanceCy(), color:getInstanceColor() }
 		t.canPick = (m:Coords)->{
 			if( !fi.def.isArray )
@@ -737,6 +785,91 @@ class FieldInstancesForm {
 		Editor.ME.setSpecialTool(t);
 	}
 
+	function startFloatPointEditing(fi:data.inst.FieldInstance, editIdx:Int) {
+		var t = new tool.PickPoint();
+
+		t.pickOrigin = { cx:getInstanceCx(), cy:getInstanceCy(), color:getInstanceColor() }
+
+		t.canPick = (m:Coords) -> {
+			return true; // FloatPoints allow duplicate positions unlike F_Point
+		}
+
+		// Connect to last point of existing path
+		if( fi.def.isArray )
+			switch fi.def.editorDisplayMode {
+				case Hidden, ValueOnly, NameAndValue, LevelTile, EntityTile, RadiusPx, RadiusGrid, ArrayCountNoLabel, ArrayCountWithLabel:
+				case Points, PointStar:
+				case RefLinkBetweenCenters:
+				case RefLinkBetweenPivots:
+				case PointPath, PointPathLoop:
+					var fp = fi.getFloatPointObj( editIdx-1 );
+					if( fp != null ) {
+						// Convert stored float cell back to integer cell for pickOrigin
+						// since PickPoint cursor works in cell space
+						t.pickOrigin = {
+							cx: Std.int(fp.cx),
+							cy: Std.int(fp.cy),
+							color: getInstanceColor()
+						}
+					}
+			}
+
+		// Picking of a point
+		t.onPick = function(m) {
+			editor.cursor.set(None);
+
+			var li = editor.curLayerInstance;
+			var fcx : Float;
+			var fcy : Float;
+			if( App.ME.settings.v.grid ) {
+				// Grid on: store integer cell as float, identical to F_Point behavior
+				fcx = m.cx;
+				fcy = m.cy;
+			}
+			else {
+				// Grid off: convert pixel position to float cell space,
+				// accounting for the +0.5 render offset
+				fcx = (m.levelX - li.pxParallaxX) / li.def.gridSize - 0.5;
+				fcy = (m.levelY - li.pxParallaxY) / li.def.gridSize - 0.5;
+			}
+
+			if( fi.def.isArray && editIdx >= fi.getArrayLength()-1 ) {
+				// Append to array
+				fi.parseValue(editIdx, fcx + Const.POINT_SEPARATOR + fcy);
+				editIdx = fi.getArrayLength(); // continue after
+
+				// Update path origin to connect next point to this one
+				switch fi.def.editorDisplayMode {
+					case Hidden, ValueOnly, NameAndValue, LevelTile, EntityTile, RadiusPx, RadiusGrid, ArrayCountNoLabel, ArrayCountWithLabel:
+					case Points, PointStar:
+					case RefLinkBetweenCenters:
+					case RefLinkBetweenPivots:
+					case PointPath, PointPathLoop:
+						var fp = fi.getFloatPointObj( editIdx-1 );
+						if( fp != null )
+							t.pickOrigin = {
+								cx: Std.int(fp.cx),
+								cy: Std.int(fp.cy),
+								color: getInstanceColor()
+							}
+				}
+			}
+			else {
+				// Edit a single point
+				Editor.ME.clearSpecialTool();
+				fi.parseValue(editIdx, fcx + Const.POINT_SEPARATOR + fcy);
+			}
+			onFieldChange(fi, true);
+		}
+
+		// Tool stopped
+		t.onDisposeCb = function() {
+			if( !isDestroyed() )
+				renderForm();
+		}
+
+		Editor.ME.setSpecialTool(t);
+	}
 
 
 	function activateLastArrayEntry(fd:FieldDef) {
@@ -763,6 +896,7 @@ class FieldInstancesForm {
 				// var ok = select.dispatchEvent(ev);
 
 			case F_Point:
+			case F_FloatPoint:
 				// Not done here
 		}
 
@@ -884,17 +1018,25 @@ class FieldInstancesForm {
 				var jArrayInputs = new J('<ul class="values"/>');
 				jArrayInputs.appendTo(jArray);
 
-				if( fi.def.type==F_Point && ( fi.def.editorDisplayMode==Points || fi.def.editorDisplayMode==PointPath || fi.def.editorDisplayMode==PointStar ) ) {
+				if( (fi.def.type==F_Point || fi.def.type==F_FloatPoint )
+					 && ( fi.def.editorDisplayMode==Points 
+						|| fi.def.editorDisplayMode==PointPath 
+						|| fi.def.editorDisplayMode==PointStar ) ) {
 					// No points listing if displayed as path
 					var jLi = new J('<li class="compact"/>');
 					var vals = [];
 					for(i in 0...fi.getArrayLength())
-						vals.push('<${fi.getPointStr(i)}>');
+						if( fi.def.type==F_FloatPoint ) {
+							var fp = fi.getFloatPointObj(i);
+							vals.push('<${ fp==null ? "null" : dn.M.truncateStr(fp.cx,2)+","+dn.M.truncateStr(fp.cy,2) }>');
+						}
+						else
+							vals.push('<${fi.getPointStr(i)}>');
 					jArrayInputs.append('<li class="compact">${vals.join(", ")}</li>');
 					// jArrayInputs.append('<li class="compact">${fi.getArrayLength()} value(s)</li>');
 				}
 				else {
-					var sortable = fi.def.type!=F_Point;
+					var sortable = fi.def.type!=F_Point && fi.def.type!=F_FloatPoint;
 					for(i in 0...fi.getArrayLength()) {
 						var li = new J('<li/>');
 						li.appendTo(jArrayInputs);
@@ -936,6 +1078,9 @@ class FieldInstancesForm {
 					jAdd.click( function(_) {
 						if( fi.def.type==F_Point ) {
 							startPointsEditing(fi, fi.getArrayLength());
+						}
+						else if( fi.def.type==F_FloatPoint ) {
+							startFloatPointEditing(fi, fi.getArrayLength());
 						}
 						else {
 							fi.addArrayValue();
