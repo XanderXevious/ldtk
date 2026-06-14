@@ -570,6 +570,14 @@ class EditEntityDefs extends ui.modal.Panel {
 			editor.ge.emit(EntityDefChanged);
 		});
 
+		// Allow Flipping
+		var i = Input.linkToHtmlInput(curEntity.allowFlipping, jEntityForm.find("input[name='allowFlipping']"));
+		i.linkEvent(EntityDefChanged);
+		i.onValueChange = (v)->{
+			if( !v ) curEntity.allowFlipping = false;
+			editor.ge.emit(EntityDefChanged);
+		}
+
 		i.linkEvent(EntityDefChanged);
 
 		// Pivot

@@ -247,6 +247,21 @@ class EntityInstanceEditor extends dn.Process {
 		else
 			jRotBlock.hide();
 
+		// Flipping block
+		var jFlipBlock = jPropsForm.find(".flipping");
+		if( ei.def.allowFlipping ) {
+			jFlipBlock.show();
+			var i = new form.input.BoolInput(
+				jFlipBlock.find("[name=flipping]"),
+				()->ei.flipped,
+				(v)->ei.flipped = v
+			);
+			i.linkEvent( EntityInstanceChanged(ei) );
+			i.onChange = ()->onEntityFieldChanged();
+		}
+		else
+			jFlipBlock.hide();
+
 		var sliderSpeed = UNIT_GRID ? 0.05 : 1;
 		// X
 		var i = Input.linkToHtmlInput(ei.x, jCoords.find("[name=x]"));

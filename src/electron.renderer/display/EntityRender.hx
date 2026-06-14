@@ -357,6 +357,7 @@ class EntityRender extends dn.Process {
 		root.y = ei.y;
 
 		core.rotation = ei.getEffectiveRotation() * Math.PI / 180;
+		core.scaleX = ei.getEffectiveFlipping() ? -1 : 1;
 
 		final fullVis = ei._li==Editor.ME.curLayerInstance;
 		core.alpha = fullVis ? 1 : ei._li.def.inactiveOpacity;

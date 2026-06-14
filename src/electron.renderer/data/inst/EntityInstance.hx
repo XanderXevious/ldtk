@@ -16,6 +16,7 @@ class EntityInstance {
 	public var customWidth : Null<Int>;
 	public var customHeight: Null<Int>;
 	public var rotation : Float; // degrees, 0-360
+	public var flipped : Bool;
 
 	public var width(get,never) : Int;
 		inline function get_width() return customWidth!=null ? customWidth : def.width;
@@ -36,6 +37,7 @@ class EntityInstance {
 		_li = li;
 		defUid = entityDefUid;
 		rotation = 0;
+		flipped = false;
 		this.iid = iid;
 	}
 
@@ -51,6 +53,10 @@ class EntityInstance {
 
 	public inline function getEffectiveRotation() : Float {
 		return def.allowRotation ? rotation : 0;
+	}
+
+	public inline function getEffectiveFlipping() : Bool {
+		return def.allowFlipping ? flipped : false;
 	}
 
 	public function toJson(li:data.inst.LayerInstance) : ldtk.Json.EntityInstanceJson {
@@ -74,7 +80,8 @@ class EntityInstance {
 			height: height,
 			defUid: defUid,
 			px: [x,y],
-			rotation: def.allowRotation ? rotation : 0,
+			rotation: getEffectiveRotation(),
+			flipped: getEffectiveFlipping(),
 			fieldInstances: {
 				var all = [];
 				for(fd in def.fieldDefs)
@@ -129,6 +136,8 @@ class EntityInstance {
 
 		ei.rotation = JsonTools.readNullableFloat( (cast json).rotation );
 		if( ei.rotation == null ) ei.rotation = 0;
+
+		ei.flipped = JsonTools.readBool( (cast json).flipped, false );
 
 		ei.customWidth = JsonTools.readNullableInt( json.width );
 		if( ei.customWidth==ei.def.width )

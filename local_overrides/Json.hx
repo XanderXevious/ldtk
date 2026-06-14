@@ -641,6 +641,10 @@ typedef EntityInstanceJson = {
 	@added("1.5.3")
 	var rotation : Float;
 
+	/** degrees, 0-360 **/
+	@added("1.5.3")
+	var flipped : Bool;
+
 	/**
 		Optional TilesetRect used to display this entity (it could either be the default Entity tile, or some tile provided by a field value, like an Enum).
 	**/
@@ -1095,6 +1099,11 @@ typedef EntityDefJson = {
 	@internal
 	@added("1.5.3")
 	var rotationSnapDegrees : Int;
+
+	/** If enabled, this entity can be flipped **/
+	@internal
+	@added("1.5.3")
+	var allowFlipping : Bool;
 
 	/** An array of strings that classifies this entity **/
 	@added("0.8.0")
