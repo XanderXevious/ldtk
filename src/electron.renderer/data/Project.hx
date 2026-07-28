@@ -1267,8 +1267,8 @@ class Project {
 		id = reg.replace(id, "_$2");
 
 		// Trim duplicates "_"
-		reg = ~/([_\1]+)/gi;
-		id = reg.replace(id, "_");
+		// reg = ~/([_\1]+)/gi;
+		// id = reg.replace(id, "_");
 
 		// Checks identifier syntax (letters or _ )
 		reg = ~/^[a-z_]+[a-z0-9_]*$/gi;

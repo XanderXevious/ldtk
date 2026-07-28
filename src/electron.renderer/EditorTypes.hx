@@ -278,6 +278,14 @@ enum AppCommand {
 	@k("ctrl pagedown, shift pagedown") C_MoveLevelToPreviousWorldLayer;
 	@k("ctrl pageup, shift pageup") C_MoveLevelToNextWorldLayer;
 
+	@k("shift n") C_GotoPreviousLevel;
+	@k("shift m") C_GotoNextLevel;
+
+	@k("shift up") C_GotoLeveUp;
+	@k("shift down") C_GotoLeveDown;
+	@k("shift left") C_GotoLeveLeft;
+	@k("shift right") C_GotoLeveRight;
+
 	@k("p") C_OpenProjectPanel;
 	@k("l") C_OpenLayerPanel;
 	@k("e") C_OpenEntityPanel;

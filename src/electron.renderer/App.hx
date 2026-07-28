@@ -649,6 +649,12 @@ class App extends dn.Process {
 			case C_ToggleTileRandomMode:
 			case C_SaveTileSelection:
 			case C_LoadTileSelection:
+			case C_GotoPreviousLevel:
+			case C_GotoNextLevel:
+			case C_GotoLeveUp:
+			case C_GotoLeveDown:
+			case C_GotoLeveLeft:
+			case C_GotoLeveRight:
 
 			case C_ExitApp:
 				App.ME.exit();

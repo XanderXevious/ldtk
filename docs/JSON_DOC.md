@@ -155,9 +155,11 @@ Value | Type | Description
 `__worldY`<br/> ![Generic badge](https://img.shields.io/badge/Added_1.3.4-gray.svg) ![Generic badge](https://img.shields.io/badge/Changed_1.5.0-green.svg)  | Int&nbsp;*(can&nbsp;be&nbsp;`null`)* | Y world coordinate in pixels Only available in GridVania or Free world layouts.
 `defUid` | Int | Reference of the **Entity definition** UID
 `fieldInstances` | Array&nbsp;of&nbsp;[Field&nbsp;instance](#ldtk-FieldInstanceJson) | An array of all custom fields and their values.
+`flipped`<br/> ![Generic badge](https://img.shields.io/badge/Added_1.5.3-green.svg)  | Bool | degrees, 0-360
 `height`<br/> ![Generic badge](https://img.shields.io/badge/Added_0.8.0-gray.svg)  | Int | Entity height in pixels. For non-resizable entities, it will be the same as Entity definition.
 `iid`<br/> ![Generic badge](https://img.shields.io/badge/Added_1.0.0-gray.svg)  | String | Unique instance identifier
 `px`<br/> ![Generic badge](https://img.shields.io/badge/Changed_0.4.0-gray.svg)  | Array&nbsp;of&nbsp;Int | Pixel coordinates (`[x,y]` format) in current level coordinate space. Don't forget optional layer offsets, if they exist!
+`rotation`<br/> ![Generic badge](https://img.shields.io/badge/Added_1.5.3-green.svg)  | Float | degrees, 0-360
 `width`<br/> ![Generic badge](https://img.shields.io/badge/Added_0.8.0-gray.svg)  | Int | Entity width in pixels. For non-resizable entities, it will be the same as Entity definition.
 
 <a id="ldtk-FieldInstanceJson" name="ldtk-FieldInstanceJson"></a>
@@ -294,12 +296,14 @@ Value | Type | Description
 `pivotX` | Float | Pivot X coordinate (from 0 to 1.0)
 `pivotY` | Float | Pivot Y coordinate (from 0 to 1.0)
 `tileRect`<br/> ![Generic badge](https://img.shields.io/badge/Added_1.0.0-gray.svg)  | [Tileset&nbsp;rectangle](#ldtk-TilesetRect)&nbsp;*(can&nbsp;be&nbsp;`null`)* | An object representing a rectangle from an existing Tileset
-`tileRenderMode`<br/> ![Generic badge](https://img.shields.io/badge/Changed_0.8.1-gray.svg)  | Enum | An enum describing how the the Entity tile is rendered inside the Entity bounds.<br/> Possible values: `Cover`, `FitInside`, `Repeat`, `Stretch`, `FullSizeCropped`, `FullSizeUncropped`, `NineSlice`
+`tileRenderMode`<br/> ![Generic badge](https://img.shields.io/badge/Changed_0.8.1-gray.svg)  | Enum | An enum describing how the Entity tile is rendered inside the Entity bounds.<br/> Possible values: `Cover`, `FitInside`, `Repeat`, `Stretch`, `FullSizeCropped`, `FullSizeUncropped`, `NineSlice`
 `tilesetId` | Int&nbsp;*(can&nbsp;be&nbsp;`null`)* | Tileset ID used for optional tile display
 `uiTileRect`<br/> ![Generic badge](https://img.shields.io/badge/Added_1.4.0-gray.svg)  | [Tileset&nbsp;rectangle](#ldtk-TilesetRect)&nbsp;*(can&nbsp;be&nbsp;`null`)* | This tile overrides the one defined in `tileRect` in the UI
 `uid` | Int | Unique Int identifier
 `width` | Int | Pixel width
+`allowFlipping`<br/><sup class="internal">*Only used by editor*</sup><br/> ![Generic badge](https://img.shields.io/badge/Added_1.5.3-green.svg)  | Bool | If enabled, this entity can be flipped
 `allowOutOfBounds`<br/><sup class="internal">*Only used by editor*</sup><br/> ![Generic badge](https://img.shields.io/badge/Added_1.5.0-green.svg)  | Bool | If enabled, this entity is allowed to stay outside of the current level bounds
+`allowRotation`<br/><sup class="internal">*Only used by editor*</sup><br/> ![Generic badge](https://img.shields.io/badge/Added_1.5.3-green.svg)  | Bool | If enabled, this entity can be rotated
 `doc`<br/><sup class="internal">*Only used by editor*</sup><br/> ![Generic badge](https://img.shields.io/badge/Added_1.2.5-gray.svg)  | String&nbsp;*(can&nbsp;be&nbsp;`null`)* | User defined documentation for this element to provide help/tips to level designers.
 `exportToToc`<br/><sup class="internal">*Only used by editor*</sup><br/> ![Generic badge](https://img.shields.io/badge/Added_1.2.4-gray.svg)  | Bool | If enabled, all instances of this entity will be listed in the project "Table of content" object.
 `fieldDefs`<br/><sup class="internal">*Only used by editor*</sup> | Array&nbsp;of&nbsp;[Field&nbsp;definition](#ldtk-FieldDefJson) | Array of field definitions
@@ -317,6 +321,7 @@ Value | Type | Description
 `renderMode`<br/><sup class="internal">*Only used by editor*</sup> | Enum | Possible values: `Rectangle`, `Ellipse`, `Tile`, `Cross`
 `resizableX`<br/><sup class="internal">*Only used by editor*</sup><br/> ![Generic badge](https://img.shields.io/badge/Added_0.8.0-gray.svg)  | Bool | If TRUE, the entity instances will be resizable horizontally
 `resizableY`<br/><sup class="internal">*Only used by editor*</sup><br/> ![Generic badge](https://img.shields.io/badge/Added_0.8.0-gray.svg)  | Bool | If TRUE, the entity instances will be resizable vertically
+`rotationSnapDegrees`<br/><sup class="internal">*Only used by editor*</sup><br/> ![Generic badge](https://img.shields.io/badge/Added_1.5.3-green.svg)  | Int | 0 = free rotation, 90 = cardinal only (0/90/180/270)
 `showName`<br/><sup class="internal">*Only used by editor*</sup><br/> ![Generic badge](https://img.shields.io/badge/Added_0.4.0-gray.svg)  | Bool | Display entity name in editor
 `tags`<br/><sup class="internal">*Only used by editor*</sup><br/> ![Generic badge](https://img.shields.io/badge/Added_0.8.0-gray.svg)  | Array&nbsp;of&nbsp;String | An array of strings that classifies this entity
 `tileOpacity`<br/><sup class="internal">*Only used by editor*</sup><br/> ![Generic badge](https://img.shields.io/badge/Added_1.0.0-gray.svg)  | Float | 
@@ -340,7 +345,7 @@ Value | Type | Description
 `max`<br/><sup class="only">Only *Int, Float*</sup><br/><sup class="internal">*Only used by editor*</sup> | Float&nbsp;*(can&nbsp;be&nbsp;`null`)* | Max limit for value, if applicable
 `min`<br/><sup class="only">Only *Int, Float*</sup><br/><sup class="internal">*Only used by editor*</sup> | Float&nbsp;*(can&nbsp;be&nbsp;`null`)* | Min limit for value, if applicable
 `regex`<br/><sup class="only">Only *String*</sup><br/><sup class="internal">*Only used by editor*</sup><br/> ![Generic badge](https://img.shields.io/badge/Added_0.6.2-gray.svg)  | String&nbsp;*(can&nbsp;be&nbsp;`null`)* | Optional regular expression that needs to be matched to accept values. Expected format: `/some_reg_ex/g`, with optional "i" flag.
-`type`<br/><sup class="internal">*Only used by editor*</sup> | String | Internal enum representing the possible field types. Possible values: F_Int, F_Float, F_String, F_Text, F_Bool, F_Color, F_Enum(...), F_Point, F_Path, F_EntityRef, F_Tile
+`type`<br/><sup class="internal">*Only used by editor*</sup> | String | Internal enum representing the possible field types. Possible values: F_Int, F_Float, F_String, F_Text, F_Bool, F_Color, F_Enum(...), F_Point, F_Path, F_EntityRef, F_Tile, F_FloatPoint
 `uid`<br/><sup class="internal">*Only used by editor*</sup> | Int | Unique Int identifier
 `allowOutOfLevelRef`<br/><sup class="internal">*Only used by editor*</sup><br/> ![Generic badge](https://img.shields.io/badge/Added_1.0.0-gray.svg)  | Bool | 
 `allowedRefTags`<br/><sup class="internal">*Only used by editor*</sup><br/> ![Generic badge](https://img.shields.io/badge/Added_1.0.0-gray.svg)  | Array&nbsp;of&nbsp;String | 

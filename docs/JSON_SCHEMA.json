@@ -511,9 +511,11 @@
 				"__tags",
 				"defUid",
 				"fieldInstances",
+				"flipped",
 				"height",
 				"iid",
 				"px",
+				"rotation",
 				"width"
 			],
 			"additionalProperties": false,
@@ -567,6 +569,12 @@
 						"null"
 					]
 				},
+				"flipped": {
+					"description": "degrees, 0-360",
+					"type": [
+						"boolean"
+					]
+				},
 				"__worldY": {
 					"description": "Y world coordinate in pixels Only available in GridVania or Free world layouts.",
 					"type": [
@@ -600,6 +608,12 @@
 					},
 					"type": [
 						"array"
+					]
+				},
+				"rotation": {
+					"description": "degrees, 0-360",
+					"type": [
+						"number"
 					]
 				},
 				"fieldInstances": {
@@ -1266,7 +1280,7 @@
 					]
 				},
 				"type": {
-					"description": "Internal enum representing the possible field types. Possible values: F_Int, F_Float, F_String, F_Text, F_Bool, F_Color, F_Enum(...), F_Point, F_Path, F_EntityRef, F_Tile",
+					"description": "Internal enum representing the possible field types. Possible values: F_Int, F_Float, F_String, F_Text, F_Bool, F_Color, F_Enum(...), F_Point, F_Path, F_EntityRef, F_Tile, F_FloatPoint",
 					"type": [
 						"string"
 					]
@@ -1329,7 +1343,9 @@
 				"tileRenderMode",
 				"uid",
 				"width",
+				"allowFlipping",
 				"allowOutOfBounds",
+				"allowRotation",
 				"exportToToc",
 				"fieldDefs",
 				"fillOpacity",
@@ -1342,6 +1358,7 @@
 				"renderMode",
 				"resizableX",
 				"resizableY",
+				"rotationSnapDegrees",
 				"showName",
 				"tags",
 				"tileOpacity"
@@ -1463,7 +1480,7 @@
 					]
 				},
 				"tileRenderMode": {
-					"description": "An enum describing how the the Entity tile is rendered inside the Entity bounds. Possible values: `Cover`, `FitInside`, `Repeat`, `Stretch`, `FullSizeCropped`, `FullSizeUncropped`, `NineSlice`",
+					"description": "An enum describing how the Entity tile is rendered inside the Entity bounds. Possible values: `Cover`, `FitInside`, `Repeat`, `Stretch`, `FullSizeCropped`, `FullSizeUncropped`, `NineSlice`",
 					"enum": [
 						"Cover",
 						"FitInside",
@@ -1474,12 +1491,24 @@
 						"NineSlice"
 					]
 				},
+				"rotationSnapDegrees": {
+					"description": "0 = free rotation, 90 = cardinal only (0/90/180/270)",
+					"type": [
+						"integer"
+					]
+				},
 				"limitBehavior": {
 					"description": "Possible values: `DiscardOldOnes`, `PreventAdding`, `MoveLastOne`",
 					"enum": [
 						"DiscardOldOnes",
 						"PreventAdding",
 						"MoveLastOne"
+					]
+				},
+				"allowFlipping": {
+					"description": "If enabled, this entity can be flipped",
+					"type": [
+						"boolean"
 					]
 				},
 				"tileOpacity": {
@@ -1539,6 +1568,12 @@
 				},
 				"resizableY": {
 					"description": "If TRUE, the entity instances will be resizable vertically",
+					"type": [
+						"boolean"
+					]
+				},
+				"allowRotation": {
+					"description": "If enabled, this entity can be rotated",
 					"type": [
 						"boolean"
 					]

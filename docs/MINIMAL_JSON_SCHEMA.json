@@ -302,9 +302,11 @@
 				"__tags",
 				"defUid",
 				"fieldInstances",
+				"flipped",
 				"height",
 				"iid",
 				"px",
+				"rotation",
 				"width"
 			],
 			"additionalProperties": false,
@@ -358,6 +360,12 @@
 						"null"
 					]
 				},
+				"flipped": {
+					"description": "degrees, 0-360",
+					"type": [
+						"boolean"
+					]
+				},
 				"__worldY": {
 					"description": "Y world coordinate in pixels Only available in GridVania or Free world layouts.",
 					"type": [
@@ -391,6 +399,12 @@
 					},
 					"type": [
 						"array"
+					]
+				},
+				"rotation": {
+					"description": "degrees, 0-360",
+					"type": [
+						"number"
 					]
 				},
 				"fieldInstances": {
@@ -629,7 +643,7 @@
 					]
 				},
 				"tileRenderMode": {
-					"description": "An enum describing how the the Entity tile is rendered inside the Entity bounds. Possible values: `Cover`, `FitInside`, `Repeat`, `Stretch`, `FullSizeCropped`, `FullSizeUncropped`, `NineSlice`",
+					"description": "An enum describing how the Entity tile is rendered inside the Entity bounds. Possible values: `Cover`, `FitInside`, `Repeat`, `Stretch`, `FullSizeCropped`, `FullSizeUncropped`, `NineSlice`",
 					"enum": [
 						"Cover",
 						"FitInside",

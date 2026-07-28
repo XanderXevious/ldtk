@@ -827,6 +827,32 @@ class Editor extends Page {
 						selectWorldDepth(curWorldDepth+1);
 				}
 
+			case C_GotoPreviousLevel:
+				if( curWorld.levels.length>1 ) {
+					var idx = curWorld.levels.indexOf(curLevel);
+					var prevIdx = (idx - 1 + curWorld.levels.length) % curWorld.levels.length;
+					selectLevel( curWorld.levels[prevIdx], true );
+				}
+
+			case C_GotoNextLevel:
+				if( curWorld.levels.length>1 ) {
+					var idx = curWorld.levels.indexOf(curLevel);
+					var nextIdx = (idx + 1) % curWorld.levels.length;
+					selectLevel( curWorld.levels[nextIdx], true );
+				}
+
+			case C_GotoLeveUp:
+				selectLevelInDirection(0, -1);
+
+			case C_GotoLeveDown:
+				selectLevelInDirection(0, 1);
+
+			case C_GotoLeveLeft:
+				selectLevelInDirection(-1, 0);
+
+			case C_GotoLeveRight:
+				selectLevelInDirection(1, 0);
+
 			case C_MoveLevelToPreviousWorldLayer:
 				if( !worldMode )
 					setWorldMode(true);
@@ -898,6 +924,67 @@ class Editor extends Page {
 
 		if( curTool!=null )
 			curTool.onAppCommand(cmd);
+	}
+
+	/**
+    Select the level that is spatially closest to `curLevel` in the given direction,
+    prioritizing levels whose bounds overlap the most on the perpendicular axis.
+    Direction is a vector: (-1,0)=left, (1,0)=right, (0,-1)=up, (0,1)=down.
+	**/
+	public function selectLevelInDirection(dx:Int, dy:Int) {
+		if( curLevel==null || curWorld==null || (dx==0 && dy==0) )
+			return;
+
+		var cur = curLevel;
+		var dh = new dn.DecisionHelper(curWorld.levels);
+
+		// Only consider levels on the same world depth/layer, excluding self
+		dh.keepOnly( l->l!=cur && l.worldDepth==cur.worldDepth );
+
+		// Only keep levels actually positioned in the requested direction
+		dh.keepOnly( l-> {
+			return
+				if( dx<0 ) l.worldX + l.pxWid <= cur.worldX
+				else if( dx>0 ) l.worldX >= cur.worldX + cur.pxWid
+				else if( dy<0 ) l.worldY + l.pxHei <= cur.worldY
+				else l.worldY >= cur.worldY + cur.pxHei;
+		});
+
+		if( dh.isEmpty() )
+			return;
+
+		// Score: overlap on the perpendicular axis matters most (keeps you "in line"),
+		// distance along the movement axis is the tiebreaker (closest wins)
+		dh.score( l-> {
+			var overlap : Int;
+			var dist : Int;
+
+			if( dx!=0 ) {
+				// Moving horizontally: compare vertical (Y) overlap, X for distance
+				var top = M.imax( cur.worldY, l.worldY );
+				var bottom = M.imin( cur.worldY+cur.pxHei, l.worldY+l.pxHei );
+				overlap = M.imax(0, bottom-top);
+				dist = dx<0
+					? cur.worldX - (l.worldX+l.pxWid)
+					: l.worldX - (cur.worldX+cur.pxWid);
+			}
+			else {
+				// Moving vertically: compare horizontal (X) overlap, Y for distance
+				var left = M.imax( cur.worldX, l.worldX );
+				var right = M.imin( cur.worldX+cur.pxWid, l.worldX+l.pxWid );
+				overlap = M.imax(0, right-left);
+				dist = dy<0
+					? cur.worldY - (l.worldY+l.pxHei)
+					: l.worldY - (cur.worldY+cur.pxHei);
+			}
+
+			// Heavily favor overlap, then prefer smaller gaps
+			return overlap*1000 - dist;
+		});
+
+		var best = dh.getBest();
+		if( best!=null )
+			selectLevel(best, true);
 	}
 
 
