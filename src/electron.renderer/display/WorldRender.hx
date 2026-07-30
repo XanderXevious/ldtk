@@ -822,15 +822,46 @@ class WorldRender extends dn.Process {
 		// Bg image
 		l.createBgTiledTexture(wl.bgWrapper);
 
-		// Per-coord limit
-		var doneCoords = new Map();
-		inline function markCoordAsDone(li:data.inst.LayerInstance, cx:Int, cy:Int) {
-			if( !doneCoords.exists(li.def.gridSize) )
-				doneCoords.set(li.def.gridSize, new Map());
-			doneCoords.get(li.def.gridSize).set( li.coordId(cx,cy), true);
+		// Per-coord limit, tracked in absolute HALF-GRID coordinates (not per-layer cell indices).
+		// This is essential because layers can have sub-cell offsets relative to each other
+		// (eg. dual-grid setups where the wall layer is shifted half a tile vs the floor layer) —
+		// so "cell (cx,cy) in layer A" and "cell (cx,cy) in layer B" are NOT necessarily the same
+		// physical area. Converting everything to absolute pixel-based half-grid coords fixes that.
+		var doneSubCoords = new Map<Int, Map<String,Bool>>(); // <gridSize, <"absHalfX_absHalfY", true>>
+
+		inline function absSubKey(li:data.inst.LayerInstance, cx:Int, cy:Int, q:Int) : String {
+			var half = li.def.gridSize*0.5;
+			var absX = Math.round( (li.pxTotalOffsetX + cx*li.def.gridSize + (q%2)*half) / half );
+			var absY = Math.round( (li.pxTotalOffsetY + cy*li.def.gridSize + Std.int(q/2)*half) / half );
+			return absX+"_"+absY;
 		}
+
+		inline function markSubCoordAsDone(li:data.inst.LayerInstance, cx:Int, cy:Int, q:Int) {
+			if( !doneSubCoords.exists(li.def.gridSize) )
+				doneSubCoords.set(li.def.gridSize, new Map());
+			doneSubCoords.get(li.def.gridSize).set( absSubKey(li,cx,cy,q), true );
+		}
+
+		inline function isSubCoordDone(li:data.inst.LayerInstance, cx:Int, cy:Int, q:Int) {
+			return doneSubCoords.exists(li.def.gridSize) && doneSubCoords.get(li.def.gridSize).exists( absSubKey(li,cx,cy,q) );
+		}
+
+		// Mark all 4 quadrants of a whole layer cell as done (used when a FULL real tile is rendered, eg. edge tiles)
+		inline function markCoordAsDone(li:data.inst.LayerInstance, cx:Int, cy:Int) {
+			for(q in 0...4)
+				markSubCoordAsDone(li, cx, cy, q);
+		}
+
+		// TRUE only if ALL 4 quadrants of this cell are already covered
 		inline function isCoordDone(li:data.inst.LayerInstance, cx:Int, cy:Int) {
-			return doneCoords.exists(li.def.gridSize) && doneCoords.get(li.def.gridSize).exists( li.coordId(cx,cy) );
+			var res = true;
+			for(q in 0...4)
+				if( !isSubCoordDone(li,cx,cy,q) )
+				{
+					res = false;
+					break;
+				}
+			return res;
 		}
 
 		// Edge tiles render
@@ -900,14 +931,14 @@ class WorldRender extends dn.Process {
 				return;
 			}
 
-			var pixelGrid = new dn.heaps.PixelGrid(li.def.gridSize, li.cWid, li.cHei);
-			wl.render.addChildAt(pixelGrid,0);
-			pixelGrid.x = li.pxTotalOffsetX;
-			pixelGrid.y = li.pxTotalOffsetY;
-
 			// IntGrid/AutoLayer
 			if( li.def.type==IntGrid && !li.def.isAutoLayer() ) {
-				// Pure intGrid
+				// Pure intGrid — unchanged, single color per cell
+				var pixelGrid = new dn.heaps.PixelGrid(li.def.gridSize, li.cWid, li.cHei);
+				wl.render.addChildAt(pixelGrid,0);
+				pixelGrid.x = li.pxTotalOffsetX;
+				pixelGrid.y = li.pxTotalOffsetY;
+
 				for(cy in 0...li.cHei)
 				for(cx in 0...li.cWid) {
 					if( !isCoordDone(li,cx,cy) && li.hasAnyGridValue(cx,cy) ) {
@@ -917,14 +948,36 @@ class WorldRender extends dn.Process {
 				}
 			}
 			else {
-				// Tiles base layer (autolayer or tiles)
+				// Tiles base layer (autolayer or tiles) — now rendered at 2x2 sub-tile resolution
 				var td = li.getTilesetDef();
 				if( td==null || !td.isAtlasLoaded() )
 					return;
 
+				var pixelGrid2x = new dn.heaps.PixelGrid(Std.int(li.def.gridSize*0.5), li.cWid*2, li.cHei*2);
+				wl.render.addChildAt(pixelGrid2x,0);
+				pixelGrid2x.x = li.pxTotalOffsetX;
+				pixelGrid2x.y = li.pxTotalOffsetY;
+
+				inline function _setQuadrants(cx:Int, cy:Int, tid:Int, useSetPixel24:Bool) {
+					for(q in 0...4) {
+						if( isSubCoordDone(li,cx,cy,q) )
+							continue;
+
+						var subC : dn.Col = td.getAverageTileSubColor(tid, q);
+						if( subC.af>=alphaThreshold ) {
+							markSubCoordAsDone(li,cx,cy,q);
+							var sx = cx*2 + (q%2);
+							var sy = cy*2 + Std.int(q/2);
+							if( useSetPixel24 )
+								pixelGrid2x.setPixel24(sx, sy, subC);
+							else
+								pixelGrid2x.setPixel(sx, sy, subC.withoutAlpha());
+						}
+					}
+				}
+
 				if( li.def.isAutoLayer() ) {
 					// Auto layer
-					var c : dn.Col = 0x0;
 					var cx = 0;
 					var cy = 0;
 					li.def.iterateActiveRulesInDisplayOrder( li, (r)->{
@@ -934,11 +987,7 @@ class WorldRender extends dn.Process {
 								cx = Std.int( tileInfos.x / li.def.gridSize );
 								cy = Std.int( tileInfos.y / li.def.gridSize );
 								if( !isCoordDone(li,cx,cy) ) {
-									c = td.getAverageTileColor(tileInfos.tid);
-									if( c.af>=alphaThreshold ) {
-										markCoordAsDone(li,cx,cy);
-										pixelGrid.setPixel24(cx,cy, c);
-									}
+									_setQuadrants(cx, cy, tileInfos.tid, true);
 								}
 							}
 						}
@@ -946,15 +995,10 @@ class WorldRender extends dn.Process {
 				}
 				else if( li.def.type==Tiles ) {
 					// Classic tiles
-					var c : dn.Col = 0x0;
 					for(cy in 0...li.cHei)
 					for(cx in 0...li.cWid)
 						if( !isCoordDone(li,cx,cy) && li.hasAnyGridTile(cx,cy) ) {
-							c = td.getAverageTileColor( li.getTopMostGridTile(cx,cy).tileId );
-							if( c.af>=alphaThreshold ) {
-								markCoordAsDone(li, cx,cy);
-								pixelGrid.setPixel(cx,cy, c.withoutAlpha());
-							}
+							_setQuadrants(cx, cy, li.getTopMostGridTile(cx,cy).tileId, false);
 						}
 				}
 			}

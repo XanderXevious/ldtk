@@ -22,6 +22,7 @@ class TilesetDef {
 
 	var opaqueTiles : Null< haxe.ds.Vector<Bool> >;
 	var averageColorsCache : Null< Map<Int,Int> >; // ARGB Int
+	var subColorsCache : Null< Map<Int, Array<Int>> >; // Per-quadrant ARGB averages: [TL, TR, BL, BR]. NOT persisted to JSON — cheap to rebuild.
 
 	public var pxWid = 0;
 	public var pxHei = 0;
@@ -409,6 +410,10 @@ class TilesetDef {
 		return averageColorsCache!=null && averageColorsCache.exists(tid) ? averageColorsCache.get(tid) : 0x888888;
 	}
 
+	public inline function getAverageTileSubColor(tid:Int, quadrant:Int) : dn.Col {
+		return subColorsCache!=null && subColorsCache.exists(tid) ? subColorsCache.get(tid)[quadrant] : getAverageTileColor(tid);
+	}
+
 	public inline function getTileId(tcx,tcy) {
 		return tcx + tcy * cWid;
 	}
@@ -666,11 +671,20 @@ class TilesetDef {
 			var r = 0.;
 			var g = 0.;
 			var b = 0.;
-
-			var pixel = 0x0;
 			var nRGB = 0.;
 			var nA = 0.;
 			var curA = 0.;
+
+			// Per-quadrant accumulators: 0=TopLeft, 1=TopRight, 2=BottomLeft, 3=BottomRight
+			var subA = [0.,0.,0.,0.];
+			var subR = [0.,0.,0.,0.];
+			var subG = [0.,0.,0.,0.];
+			var subB = [0.,0.,0.,0.];
+			var subNRGB = [0.,0.,0.,0.];
+			var subNA = [0.,0.,0.,0.];
+
+			var half = tileGridSize*0.5;
+			var pixel = 0x0;
 			for(py in ty...ty+tileGridSize)
 			for(px in tx...tx+tileGridSize) {
 				pixel = img.pixels.getPixel(px,py);
@@ -679,18 +693,45 @@ class TilesetDef {
 				if( opaqueTiles[tid]!=false && dn.legacy.Color.getA(pixel) < 1 )
 					opaqueTiles[tid] = false;
 
-				// Average color
 				curA = dn.legacy.Color.getA(pixel);
+				var pr = dn.legacy.Color.getR(pixel);
+				var pg = dn.legacy.Color.getG(pixel);
+				var pb = dn.legacy.Color.getB(pixel);
+
+				// Whole-tile average (unchanged)
 				a += curA;
-				r += dn.legacy.Color.getR(pixel) * dn.legacy.Color.getR(pixel) * curA;
-				g += dn.legacy.Color.getG(pixel) * dn.legacy.Color.getG(pixel) * curA;
-				b += dn.legacy.Color.getB(pixel) * dn.legacy.Color.getB(pixel) * curA;
+				r += pr*pr*curA;
+				g += pg*pg*curA;
+				b += pb*pb*curA;
 				nRGB += curA;
 				nA++;
+
+				// Quadrant average
+				var qx = (px-tx) < half ? 0 : 1;
+				var qy = (py-ty) < half ? 0 : 1;
+				var q = qy*2 + qx; // 0=TL, 1=TR, 2=BL, 3=BR
+
+				subA[q] += curA;
+				subR[q] += pr*pr*curA;
+				subG[q] += pg*pg*curA;
+				subB[q] += pb*pb*curA;
+				subNRGB[q] += curA;
+				subNA[q]++;
 			}
 
 			// WARNING: actual color precision will later be reduced upon saving to 4-chars "argb"" String
 			averageColorsCache.set(tid, dn.legacy.Color.makeColorArgb( Math.sqrt(r/nRGB), Math.sqrt(g/nRGB), Math.sqrt(b/nRGB), a/nA ));
+
+			// Quadrant colors (guard against fully-transparent quadrants, common in dual-grid setups)
+			var subs = [];
+			for(q in 0...4) {
+				subs.push(
+					subNRGB[q]<=0
+						? dn.legacy.Color.makeColorArgb(0,0,0, subNA[q]<=0 ? 0 : subA[q]/subNA[q])
+						: dn.legacy.Color.makeColorArgb( Math.sqrt(subR[q]/subNRGB[q]), Math.sqrt(subG[q]/subNRGB[q]), Math.sqrt(subB[q]/subNRGB[q]), subA[q]/subNA[q] )
+				);
+			}
+			subColorsCache.set(tid, subs);
 		}
 	}
 
@@ -698,6 +739,10 @@ class TilesetDef {
 		return isAtlasLoaded()
 			&& opaqueTiles!=null && opaqueTiles.length==cWid*cHei
 			&& averageColorsCache!=null;
+	}
+
+	public inline function hasValidSubColorsCache() {
+		return subColorsCache!=null;
 	}
 
 
@@ -712,6 +757,7 @@ class TilesetDef {
 		App.LOG.general("Init pixel data cache for "+relPath);
 		opaqueTiles = new haxe.ds.Vector( cWid*cHei );
 		averageColorsCache = new Map();
+		subColorsCache = new Map();
 		var img = getOrLoadTilesetImage();
 		var ops = [];
 		for(tcy in 0...cHei)

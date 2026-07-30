@@ -285,6 +285,8 @@ class Editor extends Page {
 		ui.modal.Dialog.closeAll();
 
 		project = p;
+		needSaving = false;
+
 		project.tidy();
 
 		var all = ui.ProjectSaver.listBackupFiles(project.getBackupId(), project.getAbsBackupDir());
@@ -354,7 +356,11 @@ class Editor extends Page {
 			watcher.watchEnum(ed);
 
 		selectionTool.clear();
-		checkAutoLayersCache( (anychange)->{
+
+		// Initialize transient caches without marking the project dirty.
+		checkAutoLayersCache( (_)->{} );
+		
+		/*checkAutoLayersCache( (anychange)->{
 			if( anychange )
 				needSaving = true;
 		});
@@ -369,7 +375,7 @@ class Editor extends Page {
 					needSaving = true;
 					break;
 				}
-		}
+		}*/
 	}
 
 
@@ -503,6 +509,11 @@ class Editor extends Page {
 		if( !td.hasValidPixelData() || !isInitialLoading || result!=Ok ) {
 			changed = true;
 			td.buildPixelDataAndNotify();
+		}
+		else if( !td.hasValidSubColorsCache() ) {
+			// Quadrant cache is derived/non-persisted data — silently backfill it
+			// without flagging the project as changed.
+			td.buildPixelData(null, true);
 		}
 
 		ge.emit( TilesetImageLoaded(td, isInitialLoading) );
@@ -2361,8 +2372,10 @@ class Editor extends Page {
 			case BeforeProjectSaving:
 			case LayerRuleGroupCollapseChanged(rg):
 			case ProjectSaved:
+			case ProjectSelected:
 			case GridChanged(active):
 			case ShowDetailsChanged(active):
+			case TilesetDefPixelDataCacheRebuilt(_):
 			case TilesetImageLoaded(td,init):
 				if( !init )
 					needSaving = true;
